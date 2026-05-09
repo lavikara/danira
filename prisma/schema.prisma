@@ -1,0 +1,273 @@
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String   @unique
+  firstName String
+  lastName  String
+  password  String
+  role      Role
+  gender    Gender
+  createdAt DateTime @default(now())
+  school    School?  @relation(fields: [schoolId], references: [id])
+  schoolId  Int?
+}
+
+model School {
+  id          Int        @id @default(autoincrement())
+  type        SchoolType
+  name        String     @unique
+  address     String
+  phoneNumber String
+  email       String     @unique
+
+  staffs   Staff[]
+  students Student[]
+  admins   Admin[]
+}
+
+model Staff {
+  id          String      @id @default(uuid())
+  username    String      @unique
+  email       String      @unique
+  password    String
+  firstName   String
+  lastName    String
+  phoneNumber String
+  position    String
+  image       String?
+  depertment  String?
+  status      StaffStatus
+  gender      Gender
+  address     String
+  createdAt   DateTime    @default(now())
+  role        Role
+
+  subjects Subject[]
+  classes  Class[]
+  lessons  Lesson[]
+  schoolId Int?
+  school   School?   @relation(fields: [schoolId], references: [id])
+}
+
+model Student {
+  id          String   @id @default(uuid())
+  username    String   @unique
+  email       String   @unique
+  firstName   String
+  lastName    String
+  password    String
+  address     String
+  image       String?
+  phoneNumber String?
+  gender      Gender
+  createdAt   DateTime @default(now())
+  role        Role
+
+  attendances Attendance[]
+  results     Result[]
+  fees        Fees[]
+  classId     Int
+  class       Class        @relation(fields: [classId], references: [id])
+  guardianId  String
+  guardian    Guardian     @relation(fields: [guardianId], references: [id])
+  schoolId    Int?
+  school      School?      @relation(fields: [schoolId], references: [id])
+  gradeYearId Int?
+  gradeYear   GradeYear?   @relation(fields: [gradeYearId], references: [id])
+}
+
+model Guardian {
+  id          String   @id @default(uuid())
+  username    String   @unique
+  email       String   @unique
+  firstName   String
+  lastName    String
+  phoneNumber String
+  address     String
+  password    String
+  gender      Gender
+  createdAt   DateTime @default(now())
+  role        Role
+
+  students Student[]
+}
+
+model Class {
+  id            Int            @id @default(autoincrement())
+  name          String
+  type          ClassType
+  description   String?
+  population    Int
+  supervisorId  String
+  supervisor    Staff          @relation(fields: [supervisorId], references: [id])
+  lessons       Lesson[]
+  students      Student[]
+  events        Event[]
+  announcements Announcement[]
+  gradeYearId   Int?
+  gradeYear     GradeYear?     @relation(fields: [gradeYearId], references: [id])
+}
+
+model Assignment {
+  id        Int      @id @default(autoincrement())
+  title     String
+  startTime DateTime
+  dueDate   DateTime
+
+  lessons Lesson[]
+  results Result[]
+}
+
+model Exam {
+  id        Int      @id @default(autoincrement())
+  title     String
+  startTime DateTime
+  endTime   DateTime
+
+  subjects Subject[]
+  results  Result[]
+}
+
+model GradeYear {
+  id    Int    @id @default(autoincrement())
+  level String
+
+  students Student[]
+  classes  Class[]
+}
+
+model Attendance {
+  id        Int              @id @default(autoincrement())
+  date      DateTime
+  status    AttendanceStatus
+  studentId String
+  student   Student          @relation(fields: [studentId], references: [id])
+  lessonId  Int?
+  lesson    Lesson?          @relation(fields: [lessonId], references: [id])
+}
+
+model Subject {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  code        String?
+  staffs      Staff[]
+  Lessons     Lesson[]
+  examId      Int?
+  exam        Exam?    @relation(fields: [examId], references: [id])
+}
+
+model Lesson {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  day         Day
+  startTime   DateTime
+  endTime     DateTime
+
+  attendances  Attendance[]
+  subject      Subject      @relation(fields: [subjectId], references: [id])
+  subjectId    Int
+  class        Class        @relation(fields: [classId], references: [id])
+  classId      Int
+  staff        Staff        @relation(fields: [staffId], references: [id])
+  staffId      String
+  assignmentId Int?
+  assignment   Assignment?  @relation(fields: [assignmentId], references: [id])
+}
+
+model Result {
+  id           Int         @id @default(autoincrement())
+  score        Int
+  assignmentId Int?
+  assignment   Assignment? @relation(fields: [assignmentId], references: [id])
+  examId       Int?
+  exam         Exam?       @relation(fields: [examId], references: [id])
+  studentId    String?
+  student      Student?    @relation(fields: [studentId], references: [id])
+}
+
+model Fees {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  amount      Float
+  studentId   String?
+  student     Student? @relation(fields: [studentId], references: [id])
+}
+
+model Event {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  date        DateTime
+  duration    String
+  class       Class?   @relation(fields: [classId], references: [id])
+  classId     Int?
+}
+
+model Announcement {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  date        DateTime
+  class       Class?   @relation(fields: [classId], references: [id])
+  classId     Int?
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum SchoolType {
+  PRIMARY
+  SECONDARY
+  TERTIARY
+}
+
+enum StaffStatus {
+  PERTIME
+  FULLTIME
+  VISITING
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+}
+
+enum ClassType {
+  PRIMARY
+  SECONDARY
+  TERTIARY
+}
+
+enum Day {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum Role {
+  SUPERADMIN
+  DANIRAADMIN
+  SCHOOLADMIN
+  SUBSCHOOLADMIN
+  TEACHER
+  STUDENT
+  GUARDIAN
+}
