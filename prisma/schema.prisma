@@ -35,21 +35,22 @@ model School {
 }
 
 model Staff {
-  id          String      @id @default(uuid())
-  username    String      @unique
-  email       String      @unique
-  password    String
-  firstName   String
-  lastName    String
-  phoneNumber String
-  position    String
-  image       String?
-  depertment  String?
-  status      StaffStatus
-  gender      Gender
-  address     String
-  createdAt   DateTime    @default(now())
-  role        Role
+  id           String        @id @default(uuid())
+  username     String        @unique
+  email        String        @unique
+  password     String
+  firstName    String
+  lastName     String
+  phoneNumber  String
+  position     String
+  image        String?
+  depertment   String?
+  accomodation Accomodation?
+  status       StaffStatus
+  gender       Gender
+  address      String
+  createdAt    DateTime      @default(now())
+  role         Role
 
   subjects Subject[]
   classes  Class[]
@@ -59,18 +60,19 @@ model Staff {
 }
 
 model Student {
-  id          String   @id @default(uuid())
-  username    String   @unique
-  email       String   @unique
-  firstName   String
-  lastName    String
-  password    String
-  address     String
-  image       String?
-  phoneNumber String?
-  gender      Gender
-  createdAt   DateTime @default(now())
-  role        Role
+  id           String        @id @default(uuid())
+  username     String        @unique
+  email        String        @unique
+  firstName    String
+  lastName     String
+  password     String
+  address      String
+  image        String?
+  phoneNumber  String?
+  accomodation Accomodation?
+  gender       Gender
+  createdAt    DateTime      @default(now())
+  role         Role
 
   attendances Attendance[]
   results     Result[]
@@ -138,11 +140,24 @@ model Exam {
 }
 
 model GradeYear {
-  id    Int    @id @default(autoincrement())
+  id    Int      @id @default(autoincrement())
   level String
+  start DateTime
+  end   DateTime
 
   students Student[]
   classes  Class[]
+  terms    Term[]
+}
+
+model Term {
+  id          Int        @id @default(autoincrement())
+  name        String
+  start       DateTime
+  end         DateTime
+  type        TermType
+  gradeYearId Int?
+  gradeYear   GradeYear? @relation(fields: [gradeYearId], references: [id])
 }
 
 model Attendance {
@@ -270,4 +285,15 @@ enum Role {
   TEACHER
   STUDENT
   GUARDIAN
+}
+
+enum Accomodation {
+  ONCAMPUS
+  OFFCAMPUS
+}
+
+enum TermType {
+  FIRSTTERM
+  SECONDTERM
+  THIRDTERM
 }
