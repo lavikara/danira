@@ -85,6 +85,8 @@ model Student {
   school      School?      @relation(fields: [schoolId], references: [id])
   gradeYearId Int?
   gradeYear   GradeYear?   @relation(fields: [gradeYearId], references: [id])
+  exam        Exam?        @relation(fields: [examId], references: [id])
+  examId      Int?
 }
 
 model Guardian {
@@ -137,6 +139,7 @@ model Exam {
 
   subjects Subject[]
   results  Result[]
+  students Student[]
 }
 
 model GradeYear {
@@ -215,6 +218,7 @@ model Fees {
   id          String   @id @default(uuid())
   name        String
   description String?
+  receipt     String?
   amount      Float
   studentId   String?
   student     Student? @relation(fields: [studentId], references: [id])
@@ -290,6 +294,7 @@ enum Role {
 enum Accomodation {
   ONCAMPUS
   OFFCAMPUS
+  STAFFQUARTERS
 }
 
 enum TermType {

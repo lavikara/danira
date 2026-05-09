@@ -38,6 +38,7 @@ export type FeesMinAggregateOutputType = {
   id: string | null
   name: string | null
   description: string | null
+  receipt: string | null
   amount: number | null
   studentId: string | null
 }
@@ -46,6 +47,7 @@ export type FeesMaxAggregateOutputType = {
   id: string | null
   name: string | null
   description: string | null
+  receipt: string | null
   amount: number | null
   studentId: string | null
 }
@@ -54,6 +56,7 @@ export type FeesCountAggregateOutputType = {
   id: number
   name: number
   description: number
+  receipt: number
   amount: number
   studentId: number
   _all: number
@@ -72,6 +75,7 @@ export type FeesMinAggregateInputType = {
   id?: true
   name?: true
   description?: true
+  receipt?: true
   amount?: true
   studentId?: true
 }
@@ -80,6 +84,7 @@ export type FeesMaxAggregateInputType = {
   id?: true
   name?: true
   description?: true
+  receipt?: true
   amount?: true
   studentId?: true
 }
@@ -88,6 +93,7 @@ export type FeesCountAggregateInputType = {
   id?: true
   name?: true
   description?: true
+  receipt?: true
   amount?: true
   studentId?: true
   _all?: true
@@ -183,6 +189,7 @@ export type FeesGroupByOutputType = {
   id: string
   name: string
   description: string | null
+  receipt: string | null
   amount: number
   studentId: string | null
   _count: FeesCountAggregateOutputType | null
@@ -214,6 +221,7 @@ export type FeesWhereInput = {
   id?: Prisma.StringFilter<"Fees"> | string
   name?: Prisma.StringFilter<"Fees"> | string
   description?: Prisma.StringNullableFilter<"Fees"> | string | null
+  receipt?: Prisma.StringNullableFilter<"Fees"> | string | null
   amount?: Prisma.FloatFilter<"Fees"> | number
   studentId?: Prisma.StringNullableFilter<"Fees"> | string | null
   student?: Prisma.XOR<Prisma.StudentNullableScalarRelationFilter, Prisma.StudentWhereInput> | null
@@ -223,6 +231,7 @@ export type FeesOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
+  receipt?: Prisma.SortOrderInput | Prisma.SortOrder
   amount?: Prisma.SortOrder
   studentId?: Prisma.SortOrderInput | Prisma.SortOrder
   student?: Prisma.StudentOrderByWithRelationInput
@@ -235,6 +244,7 @@ export type FeesWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.FeesWhereInput | Prisma.FeesWhereInput[]
   name?: Prisma.StringFilter<"Fees"> | string
   description?: Prisma.StringNullableFilter<"Fees"> | string | null
+  receipt?: Prisma.StringNullableFilter<"Fees"> | string | null
   amount?: Prisma.FloatFilter<"Fees"> | number
   studentId?: Prisma.StringNullableFilter<"Fees"> | string | null
   student?: Prisma.XOR<Prisma.StudentNullableScalarRelationFilter, Prisma.StudentWhereInput> | null
@@ -244,6 +254,7 @@ export type FeesOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
+  receipt?: Prisma.SortOrderInput | Prisma.SortOrder
   amount?: Prisma.SortOrder
   studentId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.FeesCountOrderByAggregateInput
@@ -260,6 +271,7 @@ export type FeesScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"Fees"> | string
   name?: Prisma.StringWithAggregatesFilter<"Fees"> | string
   description?: Prisma.StringNullableWithAggregatesFilter<"Fees"> | string | null
+  receipt?: Prisma.StringNullableWithAggregatesFilter<"Fees"> | string | null
   amount?: Prisma.FloatWithAggregatesFilter<"Fees"> | number
   studentId?: Prisma.StringNullableWithAggregatesFilter<"Fees"> | string | null
 }
@@ -268,6 +280,7 @@ export type FeesCreateInput = {
   id?: string
   name: string
   description?: string | null
+  receipt?: string | null
   amount: number
   student?: Prisma.StudentCreateNestedOneWithoutFeesInput
 }
@@ -276,6 +289,7 @@ export type FeesUncheckedCreateInput = {
   id?: string
   name: string
   description?: string | null
+  receipt?: string | null
   amount: number
   studentId?: string | null
 }
@@ -284,6 +298,7 @@ export type FeesUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receipt?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
   student?: Prisma.StudentUpdateOneWithoutFeesNestedInput
 }
@@ -292,6 +307,7 @@ export type FeesUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receipt?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
   studentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
@@ -300,6 +316,7 @@ export type FeesCreateManyInput = {
   id?: string
   name: string
   description?: string | null
+  receipt?: string | null
   amount: number
   studentId?: string | null
 }
@@ -308,6 +325,7 @@ export type FeesUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receipt?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
@@ -315,6 +333,7 @@ export type FeesUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receipt?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
   studentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
@@ -333,6 +352,7 @@ export type FeesCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   description?: Prisma.SortOrder
+  receipt?: Prisma.SortOrder
   amount?: Prisma.SortOrder
   studentId?: Prisma.SortOrder
 }
@@ -345,6 +365,7 @@ export type FeesMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   description?: Prisma.SortOrder
+  receipt?: Prisma.SortOrder
   amount?: Prisma.SortOrder
   studentId?: Prisma.SortOrder
 }
@@ -353,6 +374,7 @@ export type FeesMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
   description?: Prisma.SortOrder
+  receipt?: Prisma.SortOrder
   amount?: Prisma.SortOrder
   studentId?: Prisma.SortOrder
 }
@@ -415,6 +437,7 @@ export type FeesCreateWithoutStudentInput = {
   id?: string
   name: string
   description?: string | null
+  receipt?: string | null
   amount: number
 }
 
@@ -422,6 +445,7 @@ export type FeesUncheckedCreateWithoutStudentInput = {
   id?: string
   name: string
   description?: string | null
+  receipt?: string | null
   amount: number
 }
 
@@ -458,6 +482,7 @@ export type FeesScalarWhereInput = {
   id?: Prisma.StringFilter<"Fees"> | string
   name?: Prisma.StringFilter<"Fees"> | string
   description?: Prisma.StringNullableFilter<"Fees"> | string | null
+  receipt?: Prisma.StringNullableFilter<"Fees"> | string | null
   amount?: Prisma.FloatFilter<"Fees"> | number
   studentId?: Prisma.StringNullableFilter<"Fees"> | string | null
 }
@@ -466,6 +491,7 @@ export type FeesCreateManyStudentInput = {
   id?: string
   name: string
   description?: string | null
+  receipt?: string | null
   amount: number
 }
 
@@ -473,6 +499,7 @@ export type FeesUpdateWithoutStudentInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receipt?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
@@ -480,6 +507,7 @@ export type FeesUncheckedUpdateWithoutStudentInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receipt?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
@@ -487,6 +515,7 @@ export type FeesUncheckedUpdateManyWithoutStudentInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receipt?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   amount?: Prisma.FloatFieldUpdateOperationsInput | number
 }
 
@@ -496,6 +525,7 @@ export type FeesSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   id?: boolean
   name?: boolean
   description?: boolean
+  receipt?: boolean
   amount?: boolean
   studentId?: boolean
   student?: boolean | Prisma.Fees$studentArgs<ExtArgs>
@@ -505,6 +535,7 @@ export type FeesSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   id?: boolean
   name?: boolean
   description?: boolean
+  receipt?: boolean
   amount?: boolean
   studentId?: boolean
   student?: boolean | Prisma.Fees$studentArgs<ExtArgs>
@@ -514,6 +545,7 @@ export type FeesSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   id?: boolean
   name?: boolean
   description?: boolean
+  receipt?: boolean
   amount?: boolean
   studentId?: boolean
   student?: boolean | Prisma.Fees$studentArgs<ExtArgs>
@@ -523,11 +555,12 @@ export type FeesSelectScalar = {
   id?: boolean
   name?: boolean
   description?: boolean
+  receipt?: boolean
   amount?: boolean
   studentId?: boolean
 }
 
-export type FeesOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "amount" | "studentId", ExtArgs["result"]["fees"]>
+export type FeesOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "description" | "receipt" | "amount" | "studentId", ExtArgs["result"]["fees"]>
 export type FeesInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   student?: boolean | Prisma.Fees$studentArgs<ExtArgs>
 }
@@ -547,6 +580,7 @@ export type $FeesPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     id: string
     name: string
     description: string | null
+    receipt: string | null
     amount: number
     studentId: string | null
   }, ExtArgs["result"]["fees"]>
@@ -976,6 +1010,7 @@ export interface FeesFieldRefs {
   readonly id: Prisma.FieldRef<"Fees", 'String'>
   readonly name: Prisma.FieldRef<"Fees", 'String'>
   readonly description: Prisma.FieldRef<"Fees", 'String'>
+  readonly receipt: Prisma.FieldRef<"Fees", 'String'>
   readonly amount: Prisma.FieldRef<"Fees", 'Float'>
   readonly studentId: Prisma.FieldRef<"Fees", 'String'>
 }

@@ -80,7 +80,8 @@ export type Role = (typeof Role)[keyof typeof Role]
 
 export const Accomodation = {
   ONCAMPUS: 'ONCAMPUS',
-  OFFCAMPUS: 'OFFCAMPUS'
+  OFFCAMPUS: 'OFFCAMPUS',
+  STAFFQUARTERS: 'STAFFQUARTERS'
 } as const
 
 export type Accomodation = (typeof Accomodation)[keyof typeof Accomodation]
