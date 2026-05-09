@@ -197,6 +197,13 @@ export type StringNullableFilter<$PrismaModel = never> = {
   not?: Prisma.NestedStringNullableFilter<$PrismaModel> | string | null
 }
 
+export type EnumAccomodationNullableFilter<$PrismaModel = never> = {
+  equals?: $Enums.Accomodation | Prisma.EnumAccomodationFieldRefInput<$PrismaModel> | null
+  in?: $Enums.Accomodation[] | Prisma.ListEnumAccomodationFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.Accomodation[] | Prisma.ListEnumAccomodationFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumAccomodationNullableFilter<$PrismaModel> | $Enums.Accomodation | null
+}
+
 export type EnumStaffStatusFilter<$PrismaModel = never> = {
   equals?: $Enums.StaffStatus | Prisma.EnumStaffStatusFieldRefInput<$PrismaModel>
   in?: $Enums.StaffStatus[] | Prisma.ListEnumStaffStatusFieldRefInput<$PrismaModel>
@@ -220,6 +227,16 @@ export type StringNullableWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
   _min?: Prisma.NestedStringNullableFilter<$PrismaModel>
   _max?: Prisma.NestedStringNullableFilter<$PrismaModel>
+}
+
+export type EnumAccomodationNullableWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.Accomodation | Prisma.EnumAccomodationFieldRefInput<$PrismaModel> | null
+  in?: $Enums.Accomodation[] | Prisma.ListEnumAccomodationFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.Accomodation[] | Prisma.ListEnumAccomodationFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumAccomodationNullableWithAggregatesFilter<$PrismaModel> | $Enums.Accomodation | null
+  _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumAccomodationNullableFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumAccomodationNullableFilter<$PrismaModel>
 }
 
 export type EnumStaffStatusWithAggregatesFilter<$PrismaModel = never> = {
@@ -247,6 +264,23 @@ export type EnumClassTypeWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumClassTypeFilter<$PrismaModel>
   _max?: Prisma.NestedEnumClassTypeFilter<$PrismaModel>
+}
+
+export type EnumTermTypeFilter<$PrismaModel = never> = {
+  equals?: $Enums.TermType | Prisma.EnumTermTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.TermType[] | Prisma.ListEnumTermTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.TermType[] | Prisma.ListEnumTermTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumTermTypeFilter<$PrismaModel> | $Enums.TermType
+}
+
+export type EnumTermTypeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.TermType | Prisma.EnumTermTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.TermType[] | Prisma.ListEnumTermTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.TermType[] | Prisma.ListEnumTermTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumTermTypeWithAggregatesFilter<$PrismaModel> | $Enums.TermType
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumTermTypeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumTermTypeFilter<$PrismaModel>
 }
 
 export type EnumAttendanceStatusFilter<$PrismaModel = never> = {
@@ -507,6 +541,13 @@ export type NestedStringNullableFilter<$PrismaModel = never> = {
   not?: Prisma.NestedStringNullableFilter<$PrismaModel> | string | null
 }
 
+export type NestedEnumAccomodationNullableFilter<$PrismaModel = never> = {
+  equals?: $Enums.Accomodation | Prisma.EnumAccomodationFieldRefInput<$PrismaModel> | null
+  in?: $Enums.Accomodation[] | Prisma.ListEnumAccomodationFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.Accomodation[] | Prisma.ListEnumAccomodationFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumAccomodationNullableFilter<$PrismaModel> | $Enums.Accomodation | null
+}
+
 export type NestedEnumStaffStatusFilter<$PrismaModel = never> = {
   equals?: $Enums.StaffStatus | Prisma.EnumStaffStatusFieldRefInput<$PrismaModel>
   in?: $Enums.StaffStatus[] | Prisma.ListEnumStaffStatusFieldRefInput<$PrismaModel>
@@ -529,6 +570,16 @@ export type NestedStringNullableWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
   _min?: Prisma.NestedStringNullableFilter<$PrismaModel>
   _max?: Prisma.NestedStringNullableFilter<$PrismaModel>
+}
+
+export type NestedEnumAccomodationNullableWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.Accomodation | Prisma.EnumAccomodationFieldRefInput<$PrismaModel> | null
+  in?: $Enums.Accomodation[] | Prisma.ListEnumAccomodationFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.Accomodation[] | Prisma.ListEnumAccomodationFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumAccomodationNullableWithAggregatesFilter<$PrismaModel> | $Enums.Accomodation | null
+  _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumAccomodationNullableFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumAccomodationNullableFilter<$PrismaModel>
 }
 
 export type NestedEnumStaffStatusWithAggregatesFilter<$PrismaModel = never> = {
@@ -556,6 +607,23 @@ export type NestedEnumClassTypeWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumClassTypeFilter<$PrismaModel>
   _max?: Prisma.NestedEnumClassTypeFilter<$PrismaModel>
+}
+
+export type NestedEnumTermTypeFilter<$PrismaModel = never> = {
+  equals?: $Enums.TermType | Prisma.EnumTermTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.TermType[] | Prisma.ListEnumTermTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.TermType[] | Prisma.ListEnumTermTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumTermTypeFilter<$PrismaModel> | $Enums.TermType
+}
+
+export type NestedEnumTermTypeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.TermType | Prisma.EnumTermTypeFieldRefInput<$PrismaModel>
+  in?: $Enums.TermType[] | Prisma.ListEnumTermTypeFieldRefInput<$PrismaModel>
+  notIn?: $Enums.TermType[] | Prisma.ListEnumTermTypeFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumTermTypeWithAggregatesFilter<$PrismaModel> | $Enums.TermType
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumTermTypeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumTermTypeFilter<$PrismaModel>
 }
 
 export type NestedEnumAttendanceStatusFilter<$PrismaModel = never> = {

@@ -87,6 +87,11 @@ export type Exam = Prisma.ExamModel
  */
 export type GradeYear = Prisma.GradeYearModel
 /**
+ * Model Term
+ * 
+ */
+export type Term = Prisma.TermModel
+/**
  * Model Attendance
  * 
  */

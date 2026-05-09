@@ -48,6 +48,7 @@ export type StudentMinAggregateOutputType = {
   address: string | null
   image: string | null
   phoneNumber: string | null
+  accomodation: $Enums.Accomodation | null
   gender: $Enums.Gender | null
   createdAt: Date | null
   role: $Enums.Role | null
@@ -67,6 +68,7 @@ export type StudentMaxAggregateOutputType = {
   address: string | null
   image: string | null
   phoneNumber: string | null
+  accomodation: $Enums.Accomodation | null
   gender: $Enums.Gender | null
   createdAt: Date | null
   role: $Enums.Role | null
@@ -86,6 +88,7 @@ export type StudentCountAggregateOutputType = {
   address: number
   image: number
   phoneNumber: number
+  accomodation: number
   gender: number
   createdAt: number
   role: number
@@ -119,6 +122,7 @@ export type StudentMinAggregateInputType = {
   address?: true
   image?: true
   phoneNumber?: true
+  accomodation?: true
   gender?: true
   createdAt?: true
   role?: true
@@ -138,6 +142,7 @@ export type StudentMaxAggregateInputType = {
   address?: true
   image?: true
   phoneNumber?: true
+  accomodation?: true
   gender?: true
   createdAt?: true
   role?: true
@@ -157,6 +162,7 @@ export type StudentCountAggregateInputType = {
   address?: true
   image?: true
   phoneNumber?: true
+  accomodation?: true
   gender?: true
   createdAt?: true
   role?: true
@@ -263,6 +269,7 @@ export type StudentGroupByOutputType = {
   address: string
   image: string | null
   phoneNumber: string | null
+  accomodation: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt: Date
   role: $Enums.Role
@@ -305,6 +312,7 @@ export type StudentWhereInput = {
   address?: Prisma.StringFilter<"Student"> | string
   image?: Prisma.StringNullableFilter<"Student"> | string | null
   phoneNumber?: Prisma.StringNullableFilter<"Student"> | string | null
+  accomodation?: Prisma.EnumAccomodationNullableFilter<"Student"> | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFilter<"Student"> | $Enums.Gender
   createdAt?: Prisma.DateTimeFilter<"Student"> | Date | string
   role?: Prisma.EnumRoleFilter<"Student"> | $Enums.Role
@@ -331,6 +339,7 @@ export type StudentOrderByWithRelationInput = {
   address?: Prisma.SortOrder
   image?: Prisma.SortOrderInput | Prisma.SortOrder
   phoneNumber?: Prisma.SortOrderInput | Prisma.SortOrder
+  accomodation?: Prisma.SortOrderInput | Prisma.SortOrder
   gender?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   role?: Prisma.SortOrder
@@ -360,6 +369,7 @@ export type StudentWhereUniqueInput = Prisma.AtLeast<{
   address?: Prisma.StringFilter<"Student"> | string
   image?: Prisma.StringNullableFilter<"Student"> | string | null
   phoneNumber?: Prisma.StringNullableFilter<"Student"> | string | null
+  accomodation?: Prisma.EnumAccomodationNullableFilter<"Student"> | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFilter<"Student"> | $Enums.Gender
   createdAt?: Prisma.DateTimeFilter<"Student"> | Date | string
   role?: Prisma.EnumRoleFilter<"Student"> | $Enums.Role
@@ -386,6 +396,7 @@ export type StudentOrderByWithAggregationInput = {
   address?: Prisma.SortOrder
   image?: Prisma.SortOrderInput | Prisma.SortOrder
   phoneNumber?: Prisma.SortOrderInput | Prisma.SortOrder
+  accomodation?: Prisma.SortOrderInput | Prisma.SortOrder
   gender?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   role?: Prisma.SortOrder
@@ -413,6 +424,7 @@ export type StudentScalarWhereWithAggregatesInput = {
   address?: Prisma.StringWithAggregatesFilter<"Student"> | string
   image?: Prisma.StringNullableWithAggregatesFilter<"Student"> | string | null
   phoneNumber?: Prisma.StringNullableWithAggregatesFilter<"Student"> | string | null
+  accomodation?: Prisma.EnumAccomodationNullableWithAggregatesFilter<"Student"> | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderWithAggregatesFilter<"Student"> | $Enums.Gender
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Student"> | Date | string
   role?: Prisma.EnumRoleWithAggregatesFilter<"Student"> | $Enums.Role
@@ -432,6 +444,7 @@ export type StudentCreateInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -454,6 +467,7 @@ export type StudentUncheckedCreateInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -476,6 +490,7 @@ export type StudentUpdateInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -498,6 +513,7 @@ export type StudentUncheckedUpdateInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -520,6 +536,7 @@ export type StudentCreateManyInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -539,6 +556,7 @@ export type StudentUpdateManyMutationInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -554,6 +572,7 @@ export type StudentUncheckedUpdateManyInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -583,6 +602,7 @@ export type StudentCountOrderByAggregateInput = {
   address?: Prisma.SortOrder
   image?: Prisma.SortOrder
   phoneNumber?: Prisma.SortOrder
+  accomodation?: Prisma.SortOrder
   gender?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   role?: Prisma.SortOrder
@@ -608,6 +628,7 @@ export type StudentMaxOrderByAggregateInput = {
   address?: Prisma.SortOrder
   image?: Prisma.SortOrder
   phoneNumber?: Prisma.SortOrder
+  accomodation?: Prisma.SortOrder
   gender?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   role?: Prisma.SortOrder
@@ -627,6 +648,7 @@ export type StudentMinOrderByAggregateInput = {
   address?: Prisma.SortOrder
   image?: Prisma.SortOrder
   phoneNumber?: Prisma.SortOrder
+  accomodation?: Prisma.SortOrder
   gender?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   role?: Prisma.SortOrder
@@ -876,6 +898,7 @@ export type StudentCreateWithoutSchoolInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -897,6 +920,7 @@ export type StudentUncheckedCreateWithoutSchoolInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -947,6 +971,7 @@ export type StudentScalarWhereInput = {
   address?: Prisma.StringFilter<"Student"> | string
   image?: Prisma.StringNullableFilter<"Student"> | string | null
   phoneNumber?: Prisma.StringNullableFilter<"Student"> | string | null
+  accomodation?: Prisma.EnumAccomodationNullableFilter<"Student"> | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFilter<"Student"> | $Enums.Gender
   createdAt?: Prisma.DateTimeFilter<"Student"> | Date | string
   role?: Prisma.EnumRoleFilter<"Student"> | $Enums.Role
@@ -966,6 +991,7 @@ export type StudentCreateWithoutGuardianInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -987,6 +1013,7 @@ export type StudentUncheckedCreateWithoutGuardianInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -1034,6 +1061,7 @@ export type StudentCreateWithoutClassInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -1055,6 +1083,7 @@ export type StudentUncheckedCreateWithoutClassInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -1102,6 +1131,7 @@ export type StudentCreateWithoutGradeYearInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -1123,6 +1153,7 @@ export type StudentUncheckedCreateWithoutGradeYearInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -1170,6 +1201,7 @@ export type StudentCreateWithoutAttendancesInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -1191,6 +1223,7 @@ export type StudentUncheckedCreateWithoutAttendancesInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -1228,6 +1261,7 @@ export type StudentUpdateWithoutAttendancesInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1249,6 +1283,7 @@ export type StudentUncheckedUpdateWithoutAttendancesInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1270,6 +1305,7 @@ export type StudentCreateWithoutResultsInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -1291,6 +1327,7 @@ export type StudentUncheckedCreateWithoutResultsInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -1328,6 +1365,7 @@ export type StudentUpdateWithoutResultsInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1349,6 +1387,7 @@ export type StudentUncheckedUpdateWithoutResultsInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1370,6 +1409,7 @@ export type StudentCreateWithoutFeesInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -1391,6 +1431,7 @@ export type StudentUncheckedCreateWithoutFeesInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -1428,6 +1469,7 @@ export type StudentUpdateWithoutFeesInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1449,6 +1491,7 @@ export type StudentUncheckedUpdateWithoutFeesInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1470,6 +1513,7 @@ export type StudentCreateManySchoolInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -1488,6 +1532,7 @@ export type StudentUpdateWithoutSchoolInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1509,6 +1554,7 @@ export type StudentUncheckedUpdateWithoutSchoolInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1530,6 +1576,7 @@ export type StudentUncheckedUpdateManyWithoutSchoolInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1548,6 +1595,7 @@ export type StudentCreateManyGuardianInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -1566,6 +1614,7 @@ export type StudentUpdateWithoutGuardianInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1587,6 +1636,7 @@ export type StudentUncheckedUpdateWithoutGuardianInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1608,6 +1658,7 @@ export type StudentUncheckedUpdateManyWithoutGuardianInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1626,6 +1677,7 @@ export type StudentCreateManyClassInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -1644,6 +1696,7 @@ export type StudentUpdateWithoutClassInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1665,6 +1718,7 @@ export type StudentUncheckedUpdateWithoutClassInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1686,6 +1740,7 @@ export type StudentUncheckedUpdateManyWithoutClassInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1704,6 +1759,7 @@ export type StudentCreateManyGradeYearInput = {
   address: string
   image?: string | null
   phoneNumber?: string | null
+  accomodation?: $Enums.Accomodation | null
   gender: $Enums.Gender
   createdAt?: Date | string
   role: $Enums.Role
@@ -1722,6 +1778,7 @@ export type StudentUpdateWithoutGradeYearInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1743,6 +1800,7 @@ export type StudentUncheckedUpdateWithoutGradeYearInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1764,6 +1822,7 @@ export type StudentUncheckedUpdateManyWithoutGradeYearInput = {
   address?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   role?: Prisma.EnumRoleFieldUpdateOperationsInput | $Enums.Role
@@ -1831,6 +1890,7 @@ export type StudentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   address?: boolean
   image?: boolean
   phoneNumber?: boolean
+  accomodation?: boolean
   gender?: boolean
   createdAt?: boolean
   role?: boolean
@@ -1858,6 +1918,7 @@ export type StudentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   address?: boolean
   image?: boolean
   phoneNumber?: boolean
+  accomodation?: boolean
   gender?: boolean
   createdAt?: boolean
   role?: boolean
@@ -1881,6 +1942,7 @@ export type StudentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   address?: boolean
   image?: boolean
   phoneNumber?: boolean
+  accomodation?: boolean
   gender?: boolean
   createdAt?: boolean
   role?: boolean
@@ -1904,6 +1966,7 @@ export type StudentSelectScalar = {
   address?: boolean
   image?: boolean
   phoneNumber?: boolean
+  accomodation?: boolean
   gender?: boolean
   createdAt?: boolean
   role?: boolean
@@ -1913,7 +1976,7 @@ export type StudentSelectScalar = {
   gradeYearId?: boolean
 }
 
-export type StudentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "username" | "email" | "firstName" | "lastName" | "password" | "address" | "image" | "phoneNumber" | "gender" | "createdAt" | "role" | "classId" | "guardianId" | "schoolId" | "gradeYearId", ExtArgs["result"]["student"]>
+export type StudentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "username" | "email" | "firstName" | "lastName" | "password" | "address" | "image" | "phoneNumber" | "accomodation" | "gender" | "createdAt" | "role" | "classId" | "guardianId" | "schoolId" | "gradeYearId", ExtArgs["result"]["student"]>
 export type StudentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   attendances?: boolean | Prisma.Student$attendancesArgs<ExtArgs>
   results?: boolean | Prisma.Student$resultsArgs<ExtArgs>
@@ -1958,6 +2021,7 @@ export type $StudentPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     address: string
     image: string | null
     phoneNumber: string | null
+    accomodation: $Enums.Accomodation | null
     gender: $Enums.Gender
     createdAt: Date
     role: $Enums.Role
@@ -2404,6 +2468,7 @@ export interface StudentFieldRefs {
   readonly address: Prisma.FieldRef<"Student", 'String'>
   readonly image: Prisma.FieldRef<"Student", 'String'>
   readonly phoneNumber: Prisma.FieldRef<"Student", 'String'>
+  readonly accomodation: Prisma.FieldRef<"Student", 'Accomodation'>
   readonly gender: Prisma.FieldRef<"Student", 'Gender'>
   readonly createdAt: Prisma.FieldRef<"Student", 'DateTime'>
   readonly role: Prisma.FieldRef<"Student", 'Role'>

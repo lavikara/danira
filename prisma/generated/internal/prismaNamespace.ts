@@ -393,6 +393,7 @@ export const ModelName = {
   Assignment: 'Assignment',
   Exam: 'Exam',
   GradeYear: 'GradeYear',
+  Term: 'Term',
   Attendance: 'Attendance',
   Subject: 'Subject',
   Lesson: 'Lesson',
@@ -415,7 +416,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "admin" | "school" | "staff" | "student" | "guardian" | "class" | "assignment" | "exam" | "gradeYear" | "attendance" | "subject" | "lesson" | "result" | "fees" | "event" | "announcement"
+    modelProps: "admin" | "school" | "staff" | "student" | "guardian" | "class" | "assignment" | "exam" | "gradeYear" | "term" | "attendance" | "subject" | "lesson" | "result" | "fees" | "event" | "announcement"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1085,6 +1086,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Term: {
+      payload: Prisma.$TermPayload<ExtArgs>
+      fields: Prisma.TermFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.TermFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TermPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.TermFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TermPayload>
+        }
+        findFirst: {
+          args: Prisma.TermFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TermPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.TermFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TermPayload>
+        }
+        findMany: {
+          args: Prisma.TermFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TermPayload>[]
+        }
+        create: {
+          args: Prisma.TermCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TermPayload>
+        }
+        createMany: {
+          args: Prisma.TermCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.TermCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TermPayload>[]
+        }
+        delete: {
+          args: Prisma.TermDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TermPayload>
+        }
+        update: {
+          args: Prisma.TermUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TermPayload>
+        }
+        deleteMany: {
+          args: Prisma.TermDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.TermUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.TermUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TermPayload>[]
+        }
+        upsert: {
+          args: Prisma.TermUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TermPayload>
+        }
+        aggregate: {
+          args: Prisma.TermAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateTerm>
+        }
+        groupBy: {
+          args: Prisma.TermGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TermGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.TermCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TermCountAggregateOutputType> | number
+        }
+      }
+    }
     Attendance: {
       payload: Prisma.$AttendancePayload<ExtArgs>
       fields: Prisma.AttendanceFieldRefs
@@ -1681,6 +1756,7 @@ export const StaffScalarFieldEnum = {
   position: 'position',
   image: 'image',
   depertment: 'depertment',
+  accomodation: 'accomodation',
   status: 'status',
   gender: 'gender',
   address: 'address',
@@ -1702,6 +1778,7 @@ export const StudentScalarFieldEnum = {
   address: 'address',
   image: 'image',
   phoneNumber: 'phoneNumber',
+  accomodation: 'accomodation',
   gender: 'gender',
   createdAt: 'createdAt',
   role: 'role',
@@ -1766,10 +1843,24 @@ export type ExamScalarFieldEnum = (typeof ExamScalarFieldEnum)[keyof typeof Exam
 
 export const GradeYearScalarFieldEnum = {
   id: 'id',
-  level: 'level'
+  level: 'level',
+  start: 'start',
+  end: 'end'
 } as const
 
 export type GradeYearScalarFieldEnum = (typeof GradeYearScalarFieldEnum)[keyof typeof GradeYearScalarFieldEnum]
+
+
+export const TermScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  start: 'start',
+  end: 'end',
+  type: 'type',
+  gradeYearId: 'gradeYearId'
+} as const
+
+export type TermScalarFieldEnum = (typeof TermScalarFieldEnum)[keyof typeof TermScalarFieldEnum]
 
 
 export const AttendanceScalarFieldEnum = {
@@ -1970,6 +2061,20 @@ export type ListEnumSchoolTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$P
 
 
 /**
+ * Reference to a field of type 'Accomodation'
+ */
+export type EnumAccomodationFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Accomodation'>
+    
+
+
+/**
+ * Reference to a field of type 'Accomodation[]'
+ */
+export type ListEnumAccomodationFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Accomodation[]'>
+    
+
+
+/**
  * Reference to a field of type 'StaffStatus'
  */
 export type EnumStaffStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'StaffStatus'>
@@ -1994,6 +2099,20 @@ export type EnumClassTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$Prisma
  * Reference to a field of type 'ClassType[]'
  */
 export type ListEnumClassTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ClassType[]'>
+    
+
+
+/**
+ * Reference to a field of type 'TermType'
+ */
+export type EnumTermTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TermType'>
+    
+
+
+/**
+ * Reference to a field of type 'TermType[]'
+ */
+export type ListEnumTermTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'TermType[]'>
     
 
 
@@ -2157,6 +2276,7 @@ export type GlobalOmitConfig = {
   assignment?: Prisma.AssignmentOmit
   exam?: Prisma.ExamOmit
   gradeYear?: Prisma.GradeYearOmit
+  term?: Prisma.TermOmit
   attendance?: Prisma.AttendanceOmit
   subject?: Prisma.SubjectOmit
   lesson?: Prisma.LessonOmit

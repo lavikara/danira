@@ -76,3 +76,20 @@ export const Role = {
 } as const
 
 export type Role = (typeof Role)[keyof typeof Role]
+
+
+export const Accomodation = {
+  ONCAMPUS: 'ONCAMPUS',
+  OFFCAMPUS: 'OFFCAMPUS'
+} as const
+
+export type Accomodation = (typeof Accomodation)[keyof typeof Accomodation]
+
+
+export const TermType = {
+  FIRSTTERM: 'FIRSTTERM',
+  SECONDTERM: 'SECONDTERM',
+  THIRDTERM: 'THIRDTERM'
+} as const
+
+export type TermType = (typeof TermType)[keyof typeof TermType]

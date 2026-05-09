@@ -37,16 +37,22 @@ export type GradeYearSumAggregateOutputType = {
 export type GradeYearMinAggregateOutputType = {
   id: number | null
   level: string | null
+  start: Date | null
+  end: Date | null
 }
 
 export type GradeYearMaxAggregateOutputType = {
   id: number | null
   level: string | null
+  start: Date | null
+  end: Date | null
 }
 
 export type GradeYearCountAggregateOutputType = {
   id: number
   level: number
+  start: number
+  end: number
   _all: number
 }
 
@@ -62,16 +68,22 @@ export type GradeYearSumAggregateInputType = {
 export type GradeYearMinAggregateInputType = {
   id?: true
   level?: true
+  start?: true
+  end?: true
 }
 
 export type GradeYearMaxAggregateInputType = {
   id?: true
   level?: true
+  start?: true
+  end?: true
 }
 
 export type GradeYearCountAggregateInputType = {
   id?: true
   level?: true
+  start?: true
+  end?: true
   _all?: true
 }
 
@@ -164,6 +176,8 @@ export type GradeYearGroupByArgs<ExtArgs extends runtime.Types.Extensions.Intern
 export type GradeYearGroupByOutputType = {
   id: number
   level: string
+  start: Date
+  end: Date
   _count: GradeYearCountAggregateOutputType | null
   _avg: GradeYearAvgAggregateOutputType | null
   _sum: GradeYearSumAggregateOutputType | null
@@ -192,15 +206,21 @@ export type GradeYearWhereInput = {
   NOT?: Prisma.GradeYearWhereInput | Prisma.GradeYearWhereInput[]
   id?: Prisma.IntFilter<"GradeYear"> | number
   level?: Prisma.StringFilter<"GradeYear"> | string
+  start?: Prisma.DateTimeFilter<"GradeYear"> | Date | string
+  end?: Prisma.DateTimeFilter<"GradeYear"> | Date | string
   students?: Prisma.StudentListRelationFilter
   classes?: Prisma.ClassListRelationFilter
+  terms?: Prisma.TermListRelationFilter
 }
 
 export type GradeYearOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   level?: Prisma.SortOrder
+  start?: Prisma.SortOrder
+  end?: Prisma.SortOrder
   students?: Prisma.StudentOrderByRelationAggregateInput
   classes?: Prisma.ClassOrderByRelationAggregateInput
+  terms?: Prisma.TermOrderByRelationAggregateInput
 }
 
 export type GradeYearWhereUniqueInput = Prisma.AtLeast<{
@@ -209,13 +229,18 @@ export type GradeYearWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.GradeYearWhereInput[]
   NOT?: Prisma.GradeYearWhereInput | Prisma.GradeYearWhereInput[]
   level?: Prisma.StringFilter<"GradeYear"> | string
+  start?: Prisma.DateTimeFilter<"GradeYear"> | Date | string
+  end?: Prisma.DateTimeFilter<"GradeYear"> | Date | string
   students?: Prisma.StudentListRelationFilter
   classes?: Prisma.ClassListRelationFilter
+  terms?: Prisma.TermListRelationFilter
 }, "id">
 
 export type GradeYearOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   level?: Prisma.SortOrder
+  start?: Prisma.SortOrder
+  end?: Prisma.SortOrder
   _count?: Prisma.GradeYearCountOrderByAggregateInput
   _avg?: Prisma.GradeYearAvgOrderByAggregateInput
   _max?: Prisma.GradeYearMaxOrderByAggregateInput
@@ -229,46 +254,66 @@ export type GradeYearScalarWhereWithAggregatesInput = {
   NOT?: Prisma.GradeYearScalarWhereWithAggregatesInput | Prisma.GradeYearScalarWhereWithAggregatesInput[]
   id?: Prisma.IntWithAggregatesFilter<"GradeYear"> | number
   level?: Prisma.StringWithAggregatesFilter<"GradeYear"> | string
+  start?: Prisma.DateTimeWithAggregatesFilter<"GradeYear"> | Date | string
+  end?: Prisma.DateTimeWithAggregatesFilter<"GradeYear"> | Date | string
 }
 
 export type GradeYearCreateInput = {
   level: string
+  start: Date | string
+  end: Date | string
   students?: Prisma.StudentCreateNestedManyWithoutGradeYearInput
   classes?: Prisma.ClassCreateNestedManyWithoutGradeYearInput
+  terms?: Prisma.TermCreateNestedManyWithoutGradeYearInput
 }
 
 export type GradeYearUncheckedCreateInput = {
   id?: number
   level: string
+  start: Date | string
+  end: Date | string
   students?: Prisma.StudentUncheckedCreateNestedManyWithoutGradeYearInput
   classes?: Prisma.ClassUncheckedCreateNestedManyWithoutGradeYearInput
+  terms?: Prisma.TermUncheckedCreateNestedManyWithoutGradeYearInput
 }
 
 export type GradeYearUpdateInput = {
   level?: Prisma.StringFieldUpdateOperationsInput | string
+  start?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  end?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   students?: Prisma.StudentUpdateManyWithoutGradeYearNestedInput
   classes?: Prisma.ClassUpdateManyWithoutGradeYearNestedInput
+  terms?: Prisma.TermUpdateManyWithoutGradeYearNestedInput
 }
 
 export type GradeYearUncheckedUpdateInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   level?: Prisma.StringFieldUpdateOperationsInput | string
+  start?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  end?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   students?: Prisma.StudentUncheckedUpdateManyWithoutGradeYearNestedInput
   classes?: Prisma.ClassUncheckedUpdateManyWithoutGradeYearNestedInput
+  terms?: Prisma.TermUncheckedUpdateManyWithoutGradeYearNestedInput
 }
 
 export type GradeYearCreateManyInput = {
   id?: number
   level: string
+  start: Date | string
+  end: Date | string
 }
 
 export type GradeYearUpdateManyMutationInput = {
   level?: Prisma.StringFieldUpdateOperationsInput | string
+  start?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  end?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type GradeYearUncheckedUpdateManyInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   level?: Prisma.StringFieldUpdateOperationsInput | string
+  start?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  end?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type GradeYearNullableScalarRelationFilter = {
@@ -279,6 +324,8 @@ export type GradeYearNullableScalarRelationFilter = {
 export type GradeYearCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   level?: Prisma.SortOrder
+  start?: Prisma.SortOrder
+  end?: Prisma.SortOrder
 }
 
 export type GradeYearAvgOrderByAggregateInput = {
@@ -288,11 +335,15 @@ export type GradeYearAvgOrderByAggregateInput = {
 export type GradeYearMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   level?: Prisma.SortOrder
+  start?: Prisma.SortOrder
+  end?: Prisma.SortOrder
 }
 
 export type GradeYearMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   level?: Prisma.SortOrder
+  start?: Prisma.SortOrder
+  end?: Prisma.SortOrder
 }
 
 export type GradeYearSumOrderByAggregateInput = {
@@ -331,15 +382,37 @@ export type GradeYearUpdateOneWithoutClassesNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.GradeYearUpdateToOneWithWhereWithoutClassesInput, Prisma.GradeYearUpdateWithoutClassesInput>, Prisma.GradeYearUncheckedUpdateWithoutClassesInput>
 }
 
+export type GradeYearCreateNestedOneWithoutTermsInput = {
+  create?: Prisma.XOR<Prisma.GradeYearCreateWithoutTermsInput, Prisma.GradeYearUncheckedCreateWithoutTermsInput>
+  connectOrCreate?: Prisma.GradeYearCreateOrConnectWithoutTermsInput
+  connect?: Prisma.GradeYearWhereUniqueInput
+}
+
+export type GradeYearUpdateOneWithoutTermsNestedInput = {
+  create?: Prisma.XOR<Prisma.GradeYearCreateWithoutTermsInput, Prisma.GradeYearUncheckedCreateWithoutTermsInput>
+  connectOrCreate?: Prisma.GradeYearCreateOrConnectWithoutTermsInput
+  upsert?: Prisma.GradeYearUpsertWithoutTermsInput
+  disconnect?: Prisma.GradeYearWhereInput | boolean
+  delete?: Prisma.GradeYearWhereInput | boolean
+  connect?: Prisma.GradeYearWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.GradeYearUpdateToOneWithWhereWithoutTermsInput, Prisma.GradeYearUpdateWithoutTermsInput>, Prisma.GradeYearUncheckedUpdateWithoutTermsInput>
+}
+
 export type GradeYearCreateWithoutStudentsInput = {
   level: string
+  start: Date | string
+  end: Date | string
   classes?: Prisma.ClassCreateNestedManyWithoutGradeYearInput
+  terms?: Prisma.TermCreateNestedManyWithoutGradeYearInput
 }
 
 export type GradeYearUncheckedCreateWithoutStudentsInput = {
   id?: number
   level: string
+  start: Date | string
+  end: Date | string
   classes?: Prisma.ClassUncheckedCreateNestedManyWithoutGradeYearInput
+  terms?: Prisma.TermUncheckedCreateNestedManyWithoutGradeYearInput
 }
 
 export type GradeYearCreateOrConnectWithoutStudentsInput = {
@@ -360,24 +433,36 @@ export type GradeYearUpdateToOneWithWhereWithoutStudentsInput = {
 
 export type GradeYearUpdateWithoutStudentsInput = {
   level?: Prisma.StringFieldUpdateOperationsInput | string
+  start?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  end?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   classes?: Prisma.ClassUpdateManyWithoutGradeYearNestedInput
+  terms?: Prisma.TermUpdateManyWithoutGradeYearNestedInput
 }
 
 export type GradeYearUncheckedUpdateWithoutStudentsInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   level?: Prisma.StringFieldUpdateOperationsInput | string
+  start?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  end?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   classes?: Prisma.ClassUncheckedUpdateManyWithoutGradeYearNestedInput
+  terms?: Prisma.TermUncheckedUpdateManyWithoutGradeYearNestedInput
 }
 
 export type GradeYearCreateWithoutClassesInput = {
   level: string
+  start: Date | string
+  end: Date | string
   students?: Prisma.StudentCreateNestedManyWithoutGradeYearInput
+  terms?: Prisma.TermCreateNestedManyWithoutGradeYearInput
 }
 
 export type GradeYearUncheckedCreateWithoutClassesInput = {
   id?: number
   level: string
+  start: Date | string
+  end: Date | string
   students?: Prisma.StudentUncheckedCreateNestedManyWithoutGradeYearInput
+  terms?: Prisma.TermUncheckedCreateNestedManyWithoutGradeYearInput
 }
 
 export type GradeYearCreateOrConnectWithoutClassesInput = {
@@ -398,13 +483,69 @@ export type GradeYearUpdateToOneWithWhereWithoutClassesInput = {
 
 export type GradeYearUpdateWithoutClassesInput = {
   level?: Prisma.StringFieldUpdateOperationsInput | string
+  start?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  end?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   students?: Prisma.StudentUpdateManyWithoutGradeYearNestedInput
+  terms?: Prisma.TermUpdateManyWithoutGradeYearNestedInput
 }
 
 export type GradeYearUncheckedUpdateWithoutClassesInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   level?: Prisma.StringFieldUpdateOperationsInput | string
+  start?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  end?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   students?: Prisma.StudentUncheckedUpdateManyWithoutGradeYearNestedInput
+  terms?: Prisma.TermUncheckedUpdateManyWithoutGradeYearNestedInput
+}
+
+export type GradeYearCreateWithoutTermsInput = {
+  level: string
+  start: Date | string
+  end: Date | string
+  students?: Prisma.StudentCreateNestedManyWithoutGradeYearInput
+  classes?: Prisma.ClassCreateNestedManyWithoutGradeYearInput
+}
+
+export type GradeYearUncheckedCreateWithoutTermsInput = {
+  id?: number
+  level: string
+  start: Date | string
+  end: Date | string
+  students?: Prisma.StudentUncheckedCreateNestedManyWithoutGradeYearInput
+  classes?: Prisma.ClassUncheckedCreateNestedManyWithoutGradeYearInput
+}
+
+export type GradeYearCreateOrConnectWithoutTermsInput = {
+  where: Prisma.GradeYearWhereUniqueInput
+  create: Prisma.XOR<Prisma.GradeYearCreateWithoutTermsInput, Prisma.GradeYearUncheckedCreateWithoutTermsInput>
+}
+
+export type GradeYearUpsertWithoutTermsInput = {
+  update: Prisma.XOR<Prisma.GradeYearUpdateWithoutTermsInput, Prisma.GradeYearUncheckedUpdateWithoutTermsInput>
+  create: Prisma.XOR<Prisma.GradeYearCreateWithoutTermsInput, Prisma.GradeYearUncheckedCreateWithoutTermsInput>
+  where?: Prisma.GradeYearWhereInput
+}
+
+export type GradeYearUpdateToOneWithWhereWithoutTermsInput = {
+  where?: Prisma.GradeYearWhereInput
+  data: Prisma.XOR<Prisma.GradeYearUpdateWithoutTermsInput, Prisma.GradeYearUncheckedUpdateWithoutTermsInput>
+}
+
+export type GradeYearUpdateWithoutTermsInput = {
+  level?: Prisma.StringFieldUpdateOperationsInput | string
+  start?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  end?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  students?: Prisma.StudentUpdateManyWithoutGradeYearNestedInput
+  classes?: Prisma.ClassUpdateManyWithoutGradeYearNestedInput
+}
+
+export type GradeYearUncheckedUpdateWithoutTermsInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  level?: Prisma.StringFieldUpdateOperationsInput | string
+  start?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  end?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  students?: Prisma.StudentUncheckedUpdateManyWithoutGradeYearNestedInput
+  classes?: Prisma.ClassUncheckedUpdateManyWithoutGradeYearNestedInput
 }
 
 
@@ -415,11 +556,13 @@ export type GradeYearUncheckedUpdateWithoutClassesInput = {
 export type GradeYearCountOutputType = {
   students: number
   classes: number
+  terms: number
 }
 
 export type GradeYearCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   students?: boolean | GradeYearCountOutputTypeCountStudentsArgs
   classes?: boolean | GradeYearCountOutputTypeCountClassesArgs
+  terms?: boolean | GradeYearCountOutputTypeCountTermsArgs
 }
 
 /**
@@ -446,34 +589,51 @@ export type GradeYearCountOutputTypeCountClassesArgs<ExtArgs extends runtime.Typ
   where?: Prisma.ClassWhereInput
 }
 
+/**
+ * GradeYearCountOutputType without action
+ */
+export type GradeYearCountOutputTypeCountTermsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TermWhereInput
+}
+
 
 export type GradeYearSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   level?: boolean
+  start?: boolean
+  end?: boolean
   students?: boolean | Prisma.GradeYear$studentsArgs<ExtArgs>
   classes?: boolean | Prisma.GradeYear$classesArgs<ExtArgs>
+  terms?: boolean | Prisma.GradeYear$termsArgs<ExtArgs>
   _count?: boolean | Prisma.GradeYearCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["gradeYear"]>
 
 export type GradeYearSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   level?: boolean
+  start?: boolean
+  end?: boolean
 }, ExtArgs["result"]["gradeYear"]>
 
 export type GradeYearSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   level?: boolean
+  start?: boolean
+  end?: boolean
 }, ExtArgs["result"]["gradeYear"]>
 
 export type GradeYearSelectScalar = {
   id?: boolean
   level?: boolean
+  start?: boolean
+  end?: boolean
 }
 
-export type GradeYearOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "level", ExtArgs["result"]["gradeYear"]>
+export type GradeYearOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "level" | "start" | "end", ExtArgs["result"]["gradeYear"]>
 export type GradeYearInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   students?: boolean | Prisma.GradeYear$studentsArgs<ExtArgs>
   classes?: boolean | Prisma.GradeYear$classesArgs<ExtArgs>
+  terms?: boolean | Prisma.GradeYear$termsArgs<ExtArgs>
   _count?: boolean | Prisma.GradeYearCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type GradeYearIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -484,10 +644,13 @@ export type $GradeYearPayload<ExtArgs extends runtime.Types.Extensions.InternalA
   objects: {
     students: Prisma.$StudentPayload<ExtArgs>[]
     classes: Prisma.$ClassPayload<ExtArgs>[]
+    terms: Prisma.$TermPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
     level: string
+    start: Date
+    end: Date
   }, ExtArgs["result"]["gradeYear"]>
   composites: {}
 }
@@ -884,6 +1047,7 @@ export interface Prisma__GradeYearClient<T, Null = never, ExtArgs extends runtim
   readonly [Symbol.toStringTag]: "PrismaPromise"
   students<T extends Prisma.GradeYear$studentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.GradeYear$studentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$StudentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   classes<T extends Prisma.GradeYear$classesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.GradeYear$classesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ClassPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  terms<T extends Prisma.GradeYear$termsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.GradeYear$termsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TermPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -915,6 +1079,8 @@ export interface Prisma__GradeYearClient<T, Null = never, ExtArgs extends runtim
 export interface GradeYearFieldRefs {
   readonly id: Prisma.FieldRef<"GradeYear", 'Int'>
   readonly level: Prisma.FieldRef<"GradeYear", 'String'>
+  readonly start: Prisma.FieldRef<"GradeYear", 'DateTime'>
+  readonly end: Prisma.FieldRef<"GradeYear", 'DateTime'>
 }
     
 
@@ -1353,6 +1519,30 @@ export type GradeYear$classesArgs<ExtArgs extends runtime.Types.Extensions.Inter
   take?: number
   skip?: number
   distinct?: Prisma.ClassScalarFieldEnum | Prisma.ClassScalarFieldEnum[]
+}
+
+/**
+ * GradeYear.terms
+ */
+export type GradeYear$termsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Term
+   */
+  select?: Prisma.TermSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Term
+   */
+  omit?: Prisma.TermOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TermInclude<ExtArgs> | null
+  where?: Prisma.TermWhereInput
+  orderBy?: Prisma.TermOrderByWithRelationInput | Prisma.TermOrderByWithRelationInput[]
+  cursor?: Prisma.TermWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.TermScalarFieldEnum | Prisma.TermScalarFieldEnum[]
 }
 
 /**

@@ -45,6 +45,7 @@ export type StaffMinAggregateOutputType = {
   position: string | null
   image: string | null
   depertment: string | null
+  accomodation: $Enums.Accomodation | null
   status: $Enums.StaffStatus | null
   gender: $Enums.Gender | null
   address: string | null
@@ -64,6 +65,7 @@ export type StaffMaxAggregateOutputType = {
   position: string | null
   image: string | null
   depertment: string | null
+  accomodation: $Enums.Accomodation | null
   status: $Enums.StaffStatus | null
   gender: $Enums.Gender | null
   address: string | null
@@ -83,6 +85,7 @@ export type StaffCountAggregateOutputType = {
   position: number
   image: number
   depertment: number
+  accomodation: number
   status: number
   gender: number
   address: number
@@ -112,6 +115,7 @@ export type StaffMinAggregateInputType = {
   position?: true
   image?: true
   depertment?: true
+  accomodation?: true
   status?: true
   gender?: true
   address?: true
@@ -131,6 +135,7 @@ export type StaffMaxAggregateInputType = {
   position?: true
   image?: true
   depertment?: true
+  accomodation?: true
   status?: true
   gender?: true
   address?: true
@@ -150,6 +155,7 @@ export type StaffCountAggregateInputType = {
   position?: true
   image?: true
   depertment?: true
+  accomodation?: true
   status?: true
   gender?: true
   address?: true
@@ -256,6 +262,7 @@ export type StaffGroupByOutputType = {
   position: string
   image: string | null
   depertment: string | null
+  accomodation: $Enums.Accomodation | null
   status: $Enums.StaffStatus
   gender: $Enums.Gender
   address: string
@@ -298,6 +305,7 @@ export type StaffWhereInput = {
   position?: Prisma.StringFilter<"Staff"> | string
   image?: Prisma.StringNullableFilter<"Staff"> | string | null
   depertment?: Prisma.StringNullableFilter<"Staff"> | string | null
+  accomodation?: Prisma.EnumAccomodationNullableFilter<"Staff"> | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFilter<"Staff"> | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFilter<"Staff"> | $Enums.Gender
   address?: Prisma.StringFilter<"Staff"> | string
@@ -321,6 +329,7 @@ export type StaffOrderByWithRelationInput = {
   position?: Prisma.SortOrder
   image?: Prisma.SortOrderInput | Prisma.SortOrder
   depertment?: Prisma.SortOrderInput | Prisma.SortOrder
+  accomodation?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   gender?: Prisma.SortOrder
   address?: Prisma.SortOrder
@@ -347,6 +356,7 @@ export type StaffWhereUniqueInput = Prisma.AtLeast<{
   position?: Prisma.StringFilter<"Staff"> | string
   image?: Prisma.StringNullableFilter<"Staff"> | string | null
   depertment?: Prisma.StringNullableFilter<"Staff"> | string | null
+  accomodation?: Prisma.EnumAccomodationNullableFilter<"Staff"> | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFilter<"Staff"> | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFilter<"Staff"> | $Enums.Gender
   address?: Prisma.StringFilter<"Staff"> | string
@@ -370,6 +380,7 @@ export type StaffOrderByWithAggregationInput = {
   position?: Prisma.SortOrder
   image?: Prisma.SortOrderInput | Prisma.SortOrder
   depertment?: Prisma.SortOrderInput | Prisma.SortOrder
+  accomodation?: Prisma.SortOrderInput | Prisma.SortOrder
   status?: Prisma.SortOrder
   gender?: Prisma.SortOrder
   address?: Prisma.SortOrder
@@ -397,6 +408,7 @@ export type StaffScalarWhereWithAggregatesInput = {
   position?: Prisma.StringWithAggregatesFilter<"Staff"> | string
   image?: Prisma.StringNullableWithAggregatesFilter<"Staff"> | string | null
   depertment?: Prisma.StringNullableWithAggregatesFilter<"Staff"> | string | null
+  accomodation?: Prisma.EnumAccomodationNullableWithAggregatesFilter<"Staff"> | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusWithAggregatesFilter<"Staff"> | $Enums.StaffStatus
   gender?: Prisma.EnumGenderWithAggregatesFilter<"Staff"> | $Enums.Gender
   address?: Prisma.StringWithAggregatesFilter<"Staff"> | string
@@ -416,6 +428,7 @@ export type StaffCreateInput = {
   position: string
   image?: string | null
   depertment?: string | null
+  accomodation?: $Enums.Accomodation | null
   status: $Enums.StaffStatus
   gender: $Enums.Gender
   address: string
@@ -438,6 +451,7 @@ export type StaffUncheckedCreateInput = {
   position: string
   image?: string | null
   depertment?: string | null
+  accomodation?: $Enums.Accomodation | null
   status: $Enums.StaffStatus
   gender: $Enums.Gender
   address: string
@@ -460,6 +474,7 @@ export type StaffUpdateInput = {
   position?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   depertment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFieldUpdateOperationsInput | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   address?: Prisma.StringFieldUpdateOperationsInput | string
@@ -482,6 +497,7 @@ export type StaffUncheckedUpdateInput = {
   position?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   depertment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFieldUpdateOperationsInput | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   address?: Prisma.StringFieldUpdateOperationsInput | string
@@ -504,6 +520,7 @@ export type StaffCreateManyInput = {
   position: string
   image?: string | null
   depertment?: string | null
+  accomodation?: $Enums.Accomodation | null
   status: $Enums.StaffStatus
   gender: $Enums.Gender
   address: string
@@ -523,6 +540,7 @@ export type StaffUpdateManyMutationInput = {
   position?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   depertment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFieldUpdateOperationsInput | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   address?: Prisma.StringFieldUpdateOperationsInput | string
@@ -541,6 +559,7 @@ export type StaffUncheckedUpdateManyInput = {
   position?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   depertment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFieldUpdateOperationsInput | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   address?: Prisma.StringFieldUpdateOperationsInput | string
@@ -570,6 +589,7 @@ export type StaffCountOrderByAggregateInput = {
   position?: Prisma.SortOrder
   image?: Prisma.SortOrder
   depertment?: Prisma.SortOrder
+  accomodation?: Prisma.SortOrder
   status?: Prisma.SortOrder
   gender?: Prisma.SortOrder
   address?: Prisma.SortOrder
@@ -593,6 +613,7 @@ export type StaffMaxOrderByAggregateInput = {
   position?: Prisma.SortOrder
   image?: Prisma.SortOrder
   depertment?: Prisma.SortOrder
+  accomodation?: Prisma.SortOrder
   status?: Prisma.SortOrder
   gender?: Prisma.SortOrder
   address?: Prisma.SortOrder
@@ -612,6 +633,7 @@ export type StaffMinOrderByAggregateInput = {
   position?: Prisma.SortOrder
   image?: Prisma.SortOrder
   depertment?: Prisma.SortOrder
+  accomodation?: Prisma.SortOrder
   status?: Prisma.SortOrder
   gender?: Prisma.SortOrder
   address?: Prisma.SortOrder
@@ -673,6 +695,10 @@ export type StaffUncheckedUpdateManyWithoutSchoolNestedInput = {
 
 export type NullableStringFieldUpdateOperationsInput = {
   set?: string | null
+}
+
+export type NullableEnumAccomodationFieldUpdateOperationsInput = {
+  set?: $Enums.Accomodation | null
 }
 
 export type EnumStaffStatusFieldUpdateOperationsInput = {
@@ -756,6 +782,7 @@ export type StaffCreateWithoutSchoolInput = {
   position: string
   image?: string | null
   depertment?: string | null
+  accomodation?: $Enums.Accomodation | null
   status: $Enums.StaffStatus
   gender: $Enums.Gender
   address: string
@@ -777,6 +804,7 @@ export type StaffUncheckedCreateWithoutSchoolInput = {
   position: string
   image?: string | null
   depertment?: string | null
+  accomodation?: $Enums.Accomodation | null
   status: $Enums.StaffStatus
   gender: $Enums.Gender
   address: string
@@ -827,6 +855,7 @@ export type StaffScalarWhereInput = {
   position?: Prisma.StringFilter<"Staff"> | string
   image?: Prisma.StringNullableFilter<"Staff"> | string | null
   depertment?: Prisma.StringNullableFilter<"Staff"> | string | null
+  accomodation?: Prisma.EnumAccomodationNullableFilter<"Staff"> | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFilter<"Staff"> | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFilter<"Staff"> | $Enums.Gender
   address?: Prisma.StringFilter<"Staff"> | string
@@ -846,6 +875,7 @@ export type StaffCreateWithoutClassesInput = {
   position: string
   image?: string | null
   depertment?: string | null
+  accomodation?: $Enums.Accomodation | null
   status: $Enums.StaffStatus
   gender: $Enums.Gender
   address: string
@@ -867,6 +897,7 @@ export type StaffUncheckedCreateWithoutClassesInput = {
   position: string
   image?: string | null
   depertment?: string | null
+  accomodation?: $Enums.Accomodation | null
   status: $Enums.StaffStatus
   gender: $Enums.Gender
   address: string
@@ -904,6 +935,7 @@ export type StaffUpdateWithoutClassesInput = {
   position?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   depertment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFieldUpdateOperationsInput | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   address?: Prisma.StringFieldUpdateOperationsInput | string
@@ -925,6 +957,7 @@ export type StaffUncheckedUpdateWithoutClassesInput = {
   position?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   depertment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFieldUpdateOperationsInput | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   address?: Prisma.StringFieldUpdateOperationsInput | string
@@ -946,6 +979,7 @@ export type StaffCreateWithoutSubjectsInput = {
   position: string
   image?: string | null
   depertment?: string | null
+  accomodation?: $Enums.Accomodation | null
   status: $Enums.StaffStatus
   gender: $Enums.Gender
   address: string
@@ -967,6 +1001,7 @@ export type StaffUncheckedCreateWithoutSubjectsInput = {
   position: string
   image?: string | null
   depertment?: string | null
+  accomodation?: $Enums.Accomodation | null
   status: $Enums.StaffStatus
   gender: $Enums.Gender
   address: string
@@ -1009,6 +1044,7 @@ export type StaffCreateWithoutLessonsInput = {
   position: string
   image?: string | null
   depertment?: string | null
+  accomodation?: $Enums.Accomodation | null
   status: $Enums.StaffStatus
   gender: $Enums.Gender
   address: string
@@ -1030,6 +1066,7 @@ export type StaffUncheckedCreateWithoutLessonsInput = {
   position: string
   image?: string | null
   depertment?: string | null
+  accomodation?: $Enums.Accomodation | null
   status: $Enums.StaffStatus
   gender: $Enums.Gender
   address: string
@@ -1067,6 +1104,7 @@ export type StaffUpdateWithoutLessonsInput = {
   position?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   depertment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFieldUpdateOperationsInput | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   address?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1088,6 +1126,7 @@ export type StaffUncheckedUpdateWithoutLessonsInput = {
   position?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   depertment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFieldUpdateOperationsInput | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   address?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1109,6 +1148,7 @@ export type StaffCreateManySchoolInput = {
   position: string
   image?: string | null
   depertment?: string | null
+  accomodation?: $Enums.Accomodation | null
   status: $Enums.StaffStatus
   gender: $Enums.Gender
   address: string
@@ -1127,6 +1167,7 @@ export type StaffUpdateWithoutSchoolInput = {
   position?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   depertment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFieldUpdateOperationsInput | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   address?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1148,6 +1189,7 @@ export type StaffUncheckedUpdateWithoutSchoolInput = {
   position?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   depertment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFieldUpdateOperationsInput | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   address?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1169,6 +1211,7 @@ export type StaffUncheckedUpdateManyWithoutSchoolInput = {
   position?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   depertment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFieldUpdateOperationsInput | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   address?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1187,6 +1230,7 @@ export type StaffUpdateWithoutSubjectsInput = {
   position?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   depertment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFieldUpdateOperationsInput | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   address?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1208,6 +1252,7 @@ export type StaffUncheckedUpdateWithoutSubjectsInput = {
   position?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   depertment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFieldUpdateOperationsInput | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   address?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1229,6 +1274,7 @@ export type StaffUncheckedUpdateManyWithoutSubjectsInput = {
   position?: Prisma.StringFieldUpdateOperationsInput | string
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   depertment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accomodation?: Prisma.NullableEnumAccomodationFieldUpdateOperationsInput | $Enums.Accomodation | null
   status?: Prisma.EnumStaffStatusFieldUpdateOperationsInput | $Enums.StaffStatus
   gender?: Prisma.EnumGenderFieldUpdateOperationsInput | $Enums.Gender
   address?: Prisma.StringFieldUpdateOperationsInput | string
@@ -1297,6 +1343,7 @@ export type StaffSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   position?: boolean
   image?: boolean
   depertment?: boolean
+  accomodation?: boolean
   status?: boolean
   gender?: boolean
   address?: boolean
@@ -1321,6 +1368,7 @@ export type StaffSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   position?: boolean
   image?: boolean
   depertment?: boolean
+  accomodation?: boolean
   status?: boolean
   gender?: boolean
   address?: boolean
@@ -1341,6 +1389,7 @@ export type StaffSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   position?: boolean
   image?: boolean
   depertment?: boolean
+  accomodation?: boolean
   status?: boolean
   gender?: boolean
   address?: boolean
@@ -1361,6 +1410,7 @@ export type StaffSelectScalar = {
   position?: boolean
   image?: boolean
   depertment?: boolean
+  accomodation?: boolean
   status?: boolean
   gender?: boolean
   address?: boolean
@@ -1369,7 +1419,7 @@ export type StaffSelectScalar = {
   schoolId?: boolean
 }
 
-export type StaffOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "username" | "email" | "password" | "firstName" | "lastName" | "phoneNumber" | "position" | "image" | "depertment" | "status" | "gender" | "address" | "createdAt" | "role" | "schoolId", ExtArgs["result"]["staff"]>
+export type StaffOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "username" | "email" | "password" | "firstName" | "lastName" | "phoneNumber" | "position" | "image" | "depertment" | "accomodation" | "status" | "gender" | "address" | "createdAt" | "role" | "schoolId", ExtArgs["result"]["staff"]>
 export type StaffInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   subjects?: boolean | Prisma.Staff$subjectsArgs<ExtArgs>
   classes?: boolean | Prisma.Staff$classesArgs<ExtArgs>
@@ -1403,6 +1453,7 @@ export type $StaffPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     position: string
     image: string | null
     depertment: string | null
+    accomodation: $Enums.Accomodation | null
     status: $Enums.StaffStatus
     gender: $Enums.Gender
     address: string
@@ -1846,6 +1897,7 @@ export interface StaffFieldRefs {
   readonly position: Prisma.FieldRef<"Staff", 'String'>
   readonly image: Prisma.FieldRef<"Staff", 'String'>
   readonly depertment: Prisma.FieldRef<"Staff", 'String'>
+  readonly accomodation: Prisma.FieldRef<"Staff", 'Accomodation'>
   readonly status: Prisma.FieldRef<"Staff", 'StaffStatus'>
   readonly gender: Prisma.FieldRef<"Staff", 'Gender'>
   readonly address: Prisma.FieldRef<"Staff", 'String'>

@@ -60,6 +60,7 @@ export const ModelName = {
   Assignment: 'Assignment',
   Exam: 'Exam',
   GradeYear: 'GradeYear',
+  Term: 'Term',
   Attendance: 'Attendance',
   Subject: 'Subject',
   Lesson: 'Lesson',
@@ -124,6 +125,7 @@ export const StaffScalarFieldEnum = {
   position: 'position',
   image: 'image',
   depertment: 'depertment',
+  accomodation: 'accomodation',
   status: 'status',
   gender: 'gender',
   address: 'address',
@@ -145,6 +147,7 @@ export const StudentScalarFieldEnum = {
   address: 'address',
   image: 'image',
   phoneNumber: 'phoneNumber',
+  accomodation: 'accomodation',
   gender: 'gender',
   createdAt: 'createdAt',
   role: 'role',
@@ -209,10 +212,24 @@ export type ExamScalarFieldEnum = (typeof ExamScalarFieldEnum)[keyof typeof Exam
 
 export const GradeYearScalarFieldEnum = {
   id: 'id',
-  level: 'level'
+  level: 'level',
+  start: 'start',
+  end: 'end'
 } as const
 
 export type GradeYearScalarFieldEnum = (typeof GradeYearScalarFieldEnum)[keyof typeof GradeYearScalarFieldEnum]
+
+
+export const TermScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  start: 'start',
+  end: 'end',
+  type: 'type',
+  gradeYearId: 'gradeYearId'
+} as const
+
+export type TermScalarFieldEnum = (typeof TermScalarFieldEnum)[keyof typeof TermScalarFieldEnum]
 
 
 export const AttendanceScalarFieldEnum = {

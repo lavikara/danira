@@ -188,14 +188,30 @@ async function main() {
   // ======================================================
 
   const gradeYears = await Promise.all([
-    prisma.gradeYear.create({ data: { level: "Primary 1" } }),
-    prisma.gradeYear.create({ data: { level: "Primary 2" } }),
-    prisma.gradeYear.create({ data: { level: "JSS 1" } }),
-    prisma.gradeYear.create({ data: { level: "JSS 2" } }),
-    prisma.gradeYear.create({ data: { level: "SS 1" } }),
-    prisma.gradeYear.create({ data: { level: "SS 2" } }),
-    prisma.gradeYear.create({ data: { level: "100 Level" } }),
-    prisma.gradeYear.create({ data: { level: "200 Level" } }),
+    prisma.gradeYear.create({
+      data: { level: "Primary 1", start: new Date(), end: new Date() },
+    }),
+    prisma.gradeYear.create({
+      data: { level: "Primary 2", start: new Date(), end: new Date() },
+    }),
+    prisma.gradeYear.create({
+      data: { level: "JSS 1", start: new Date(), end: new Date() },
+    }),
+    prisma.gradeYear.create({
+      data: { level: "JSS 2", start: new Date(), end: new Date() },
+    }),
+    prisma.gradeYear.create({
+      data: { level: "SS 1", start: new Date(), end: new Date() },
+    }),
+    prisma.gradeYear.create({
+      data: { level: "SS 2", start: new Date(), end: new Date() },
+    }),
+    prisma.gradeYear.create({
+      data: { level: "100 Level", start: new Date(), end: new Date() },
+    }),
+    prisma.gradeYear.create({
+      data: { level: "200 Level", start: new Date(), end: new Date() },
+    }),
   ]);
 
   // ======================================================
