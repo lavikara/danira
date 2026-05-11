@@ -1,19 +1,32 @@
-import "source-map-support/register";
-const express = require("express");
-const dotenv = require("dotenv");
+import express, { type Request, type Response } from "express";
+import cors from "cors";
+import dotenv from "dotenv";
 dotenv.config();
-const cors = require("cors");
+import { prisma } from "./utils/prisma.js";
+import { Router } from "express";
 
+const router = Router();
 const app = express();
 const PORT = process.env.SERVER_PORT;
-
-const userRouter = require("./routes/user");
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cors());
 
-app.use("/user", userRouter);
+app.get("/", async (req: Request, res: Response) => {
+  const allStaffs = await prisma.student.findMany({
+    include: {
+      school: true,
+      attendances: true,
+      fees: true,
+      subject: true,
+    },
+  });
+  res.status(200).send({
+    status: "success",
+    data: allStaffs,
+  });
+});
 
 app.listen(PORT, () => {
   console.log(`Server is running on port 🗼 🗼 ${PORT} 🗼 🗼`);
