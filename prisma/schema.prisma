@@ -1,6 +1,11 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
 generator client {
   provider = "prisma-client"
-  output   = "./generated"
+  output   = "../src/generated"
 }
 
 datasource db {
@@ -74,19 +79,25 @@ model Student {
   createdAt    DateTime      @default(now())
   role         Role
 
-  attendances Attendance[]
-  results     Result[]
-  fees        Fees[]
-  classId     Int
-  class       Class        @relation(fields: [classId], references: [id])
-  guardianId  String
-  guardian    Guardian     @relation(fields: [guardianId], references: [id])
-  schoolId    Int?
-  school      School?      @relation(fields: [schoolId], references: [id])
-  gradeYearId Int?
-  gradeYear   GradeYear?   @relation(fields: [gradeYearId], references: [id])
-  exam        Exam?        @relation(fields: [examId], references: [id])
-  examId      Int?
+  attendances  Attendance[]
+  reportCard   ReportCard[]
+  fees         Fees[]
+  classId      Int
+  class        Class        @relation(fields: [classId], references: [id])
+  guardianId   String
+  guardian     Guardian     @relation(fields: [guardianId], references: [id])
+  schoolId     Int?
+  school       School?      @relation(fields: [schoolId], references: [id])
+  gradeYearId  Int?
+  gradeYear    GradeYear?   @relation(fields: [gradeYearId], references: [id])
+  examId       Int?
+  exam         Exam?        @relation(fields: [examId], references: [id])
+  testId       Int?
+  test         Test?        @relation(fields: [testId], references: [id])
+  assignmentId Int?
+  assignment   Assignment?  @relation(fields: [assignmentId], references: [id])
+  subjectId    Int?
+  subject      Subject?     @relation(fields: [subjectId], references: [id])
 }
 
 model Guardian {
@@ -127,8 +138,8 @@ model Assignment {
   startTime DateTime
   dueDate   DateTime
 
-  lessons Lesson[]
-  results Result[]
+  lessons  Lesson[]
+  students Student[]
 }
 
 model Exam {
@@ -138,7 +149,16 @@ model Exam {
   endTime   DateTime
 
   subjects Subject[]
-  results  Result[]
+  students Student[]
+}
+
+model Test {
+  id        Int      @id @default(autoincrement())
+  title     String
+  startTime DateTime
+  endTime   DateTime
+
+  subjects Subject[]
   students Student[]
 }
 
@@ -174,14 +194,19 @@ model Attendance {
 }
 
 model Subject {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  description String?
-  code        String?
-  staffs      Staff[]
-  Lessons     Lesson[]
-  examId      Int?
-  exam        Exam?    @relation(fields: [examId], references: [id])
+  id           Int         @id @default(autoincrement())
+  name         String      @unique
+  description  String?
+  code         String?
+  staffs       Staff[]
+  lessons      Lesson[]
+  students     Student[]
+  examId       Int?
+  exam         Exam?       @relation(fields: [examId], references: [id])
+  testId       Int?
+  test         Test?       @relation(fields: [testId], references: [id])
+  reportCardId Int?
+  reportCard   ReportCard? @relation(fields: [reportCardId], references: [id])
 }
 
 model Lesson {
@@ -203,15 +228,17 @@ model Lesson {
   assignment   Assignment?  @relation(fields: [assignmentId], references: [id])
 }
 
-model Result {
-  id           Int         @id @default(autoincrement())
-  score        Int
-  assignmentId Int?
-  assignment   Assignment? @relation(fields: [assignmentId], references: [id])
-  examId       Int?
-  exam         Exam?       @relation(fields: [examId], references: [id])
-  studentId    String?
-  student      Student?    @relation(fields: [studentId], references: [id])
+model ReportCard {
+  id              Int       @id @default(autoincrement())
+  testScore       Float
+  assignmentScore Float
+  examScore       Float
+  attendanceScore Float
+  teacherComment  String
+  generalComment  String
+  subjects        Subject[]
+  studentId       String?
+  student         Student?  @relation(fields: [studentId], references: [id])
 }
 
 model Fees {
@@ -283,7 +310,7 @@ enum Day {
 
 enum Role {
   SUPERADMIN
-  DANIRAADMIN
+  PLATFORMADMIN
   SCHOOLADMIN
   SUBSCHOOLADMIN
   TEACHER
