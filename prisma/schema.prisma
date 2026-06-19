@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated"
@@ -12,262 +7,303 @@ datasource db {
   provider = "postgresql"
 }
 
-model Admin {
-  id        String   @id @default(uuid())
-  username  String   @unique
-  email     String   @unique
-  firstName String
-  lastName  String
-  password  String
-  role      Role
-  gender    Gender
-  createdAt DateTime @default(now())
-  school    School?  @relation(fields: [schoolId], references: [id])
-  schoolId  Int?
-}
-
-model School {
-  id          Int        @id @default(autoincrement())
-  type        SchoolType
-  name        String     @unique
-  address     String
-  phoneNumber String
-  email       String     @unique
-
-  staffs   Staff[]
-  students Student[]
-  admins   Admin[]
-}
-
-model Staff {
-  id           String        @id @default(uuid())
-  username     String        @unique
-  email        String        @unique
-  password     String
-  firstName    String
-  lastName     String
-  phoneNumber  String
-  position     String
-  image        String?
-  depertment   String?
-  accomodation Accomodation?
-  status       StaffStatus
-  gender       Gender
-  address      String
-  createdAt    DateTime      @default(now())
-  role         Role
-
-  subjects Subject[]
-  classes  Class[]
-  lessons  Lesson[]
-  schoolId Int?
-  school   School?   @relation(fields: [schoolId], references: [id])
-}
-
-model Student {
-  id           String        @id @default(uuid())
-  username     String        @unique
-  email        String        @unique
-  firstName    String
-  lastName     String
-  password     String
-  address      String
-  image        String?
-  phoneNumber  String?
-  accomodation Accomodation?
-  gender       Gender
-  createdAt    DateTime      @default(now())
-  role         Role
-
-  attendances  Attendance[]
-  reportCard   ReportCard[]
-  fees         Fees[]
-  classId      Int
-  class        Class        @relation(fields: [classId], references: [id])
-  guardianId   String
-  guardian     Guardian     @relation(fields: [guardianId], references: [id])
-  schoolId     Int?
-  school       School?      @relation(fields: [schoolId], references: [id])
-  gradeYearId  Int?
-  gradeYear    GradeYear?   @relation(fields: [gradeYearId], references: [id])
-  examId       Int?
-  exam         Exam?        @relation(fields: [examId], references: [id])
-  testId       Int?
-  test         Test?        @relation(fields: [testId], references: [id])
-  assignmentId Int?
-  assignment   Assignment?  @relation(fields: [assignmentId], references: [id])
-  subjectId    Int?
-  subject      Subject?     @relation(fields: [subjectId], references: [id])
-}
-
-model Guardian {
-  id          String   @id @default(uuid())
-  username    String   @unique
-  email       String   @unique
+model Users {
+  id          String        @id @default(uuid())
+  username    String        @unique
+  email       String        @unique
+  password    String
   firstName   String
   lastName    String
   phoneNumber String
   address     String
-  password    String
   gender      Gender
-  createdAt   DateTime @default(now())
   role        Role
-
-  students Student[]
+  status      UserCondition
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  admins      Admins?
+  staffs      Staffs?
+  students    Students?
+  guardians   Guardians?
 }
 
-model Class {
-  id            Int            @id @default(autoincrement())
+model Admins {
+  id        String        @id @default(uuid())
+  userId    String        @unique
+  type      SchoolSetup?
+  schoolIds String[]
+  schools   Schools[]
+  groupId   String?
+  group     SchoolGroups? @relation(fields: [groupId], references: [id])
+  users     Users         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SchoolGroups {
+  id        String       @id @default(uuid())
+  name      String       @unique
+  status    SchoolStatus
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  admins    Admins[]
+  schools   Schools[]
+}
+
+model Schools {
+  id          String        @id @default(uuid())
+  type        SchoolType
+  setup       SchoolSetup
+  schoolName  String        @unique
+  address     String
+  phoneNumber String
+  createdBy   String
+  approvedBy  String
+  isApproved  Boolean
+  status      SchoolStatus
+  email       String        @unique
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  staffs      Staffs[]
+  students    Students[]
+  admins      Admins[]
+  groupId     String?
+  group       SchoolGroups? @relation(fields: [groupId], references: [id])
+}
+
+model Staffs {
+  id               String        @id @default(uuid())
+  userId           String        @unique
+  position         String
+  image            String?
+  depertment       String?
+  accomodation     Accomodation?
+  employmentStatus StaffStatus
+  subjects         Subjects[]
+  classes          Classes[]
+  lessons          Lessons[]
+  schoolId         String?
+  school           Schools?      @relation(fields: [schoolId], references: [id])
+  users            Users         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Students {
+  id           String        @id @default(uuid())
+  image        String?
+  accomodation Accomodation?
+  attendances  Attendance[]
+  reportCard   ReportCards[]
+  fees         Fees[]
+  classId      Int
+  class        Classes       @relation(fields: [classId], references: [id])
+  guardianId   String
+  guardian     Guardians     @relation(fields: [guardianId], references: [id])
+  schoolId     String?
+  school       Schools?      @relation(fields: [schoolId], references: [id])
+  gradeYearId  Int?
+  gradeYear    GradeYears?   @relation(fields: [gradeYearId], references: [id])
+  examId       Int?
+  exam         Exams?        @relation(fields: [examId], references: [id])
+  testId       Int?
+  test         Tests?        @relation(fields: [testId], references: [id])
+  assignmentId Int?
+  assignment   Assignments?  @relation(fields: [assignmentId], references: [id])
+  subjectId    Int?
+  subject      Subjects?     @relation(fields: [subjectId], references: [id])
+  userId       String        @unique
+  users        Users         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Guardians {
+  id       String     @id @default(uuid())
+  userId   String     @unique
+  students Students[]
+  users    Users      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Classes {
+  id            Int             @id @default(autoincrement())
   name          String
   type          ClassType
+  status        ClassCondition
   description   String?
   population    Int
   supervisorId  String
-  supervisor    Staff          @relation(fields: [supervisorId], references: [id])
-  lessons       Lesson[]
-  students      Student[]
-  events        Event[]
-  announcements Announcement[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  supervisor    Staffs          @relation(fields: [supervisorId], references: [id])
+  lessons       Lessons[]
+  students      Students[]
+  events        Events[]
+  announcements Announcements[]
   gradeYearId   Int?
-  gradeYear     GradeYear?     @relation(fields: [gradeYearId], references: [id])
+  gradeYear     GradeYears?     @relation(fields: [gradeYearId], references: [id])
 }
 
-model Assignment {
-  id        Int      @id @default(autoincrement())
+model Assignments {
+  id        Int        @id @default(autoincrement())
   title     String
   startTime DateTime
   dueDate   DateTime
-
-  lessons  Lesson[]
-  students Student[]
+  status    Duration
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  lessons   Lessons[]
+  students  Students[]
 }
 
-model Exam {
-  id        Int      @id @default(autoincrement())
+model Exams {
+  id        Int        @id @default(autoincrement())
   title     String
+  status    Duration
   startTime DateTime
   endTime   DateTime
-
-  subjects Subject[]
-  students Student[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  subjects  Subjects[]
+  students  Students[]
 }
 
-model Test {
-  id        Int      @id @default(autoincrement())
+model Tests {
+  id        Int        @id @default(autoincrement())
   title     String
+  status    Duration
   startTime DateTime
   endTime   DateTime
-
-  subjects Subject[]
-  students Student[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  subjects  Subjects[]
+  students  Students[]
 }
 
-model GradeYear {
-  id    Int      @id @default(autoincrement())
-  level String
-  start DateTime
-  end   DateTime
-
-  students Student[]
-  classes  Class[]
-  terms    Term[]
+model GradeYears {
+  id        Int        @id @default(autoincrement())
+  level     String
+  start     DateTime
+  end       DateTime
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  students  Students[]
+  classes   Classes[]
+  terms     Terms[]
 }
 
-model Term {
-  id          Int        @id @default(autoincrement())
+model Terms {
+  id          Int         @id @default(autoincrement())
   name        String
   start       DateTime
   end         DateTime
+  status      Duration
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
   type        TermType
   gradeYearId Int?
-  gradeYear   GradeYear? @relation(fields: [gradeYearId], references: [id])
+  gradeYear   GradeYears? @relation(fields: [gradeYearId], references: [id])
 }
 
 model Attendance {
-  id        Int              @id @default(autoincrement())
-  date      DateTime
-  status    AttendanceStatus
-  studentId String
-  student   Student          @relation(fields: [studentId], references: [id])
-  lessonId  Int?
-  lesson    Lesson?          @relation(fields: [lessonId], references: [id])
+  id         Int              @id @default(autoincrement())
+  date       DateTime
+  attendance AttendanceStatus
+  status     Duration
+  studentId  String
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  student    Students         @relation(fields: [studentId], references: [id])
+  lessonId   Int?
+  lesson     Lessons?         @relation(fields: [lessonId], references: [id])
 }
 
-model Subject {
-  id           Int         @id @default(autoincrement())
-  name         String      @unique
+model Subjects {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
   description  String?
   code         String?
-  staffs       Staff[]
-  lessons      Lesson[]
-  students     Student[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  status       SubjectStatus
+  staffs       Staffs[]
+  lessons      Lessons[]
+  students     Students[]
   examId       Int?
-  exam         Exam?       @relation(fields: [examId], references: [id])
+  exam         Exams?        @relation(fields: [examId], references: [id])
   testId       Int?
-  test         Test?       @relation(fields: [testId], references: [id])
+  test         Tests?        @relation(fields: [testId], references: [id])
   reportCardId Int?
-  reportCard   ReportCard? @relation(fields: [reportCardId], references: [id])
+  reportCard   ReportCards?  @relation(fields: [reportCardId], references: [id])
 }
 
-model Lesson {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  description String?
-  day         Day
-  startTime   DateTime
-  endTime     DateTime
-
+model Lessons {
+  id           Int          @id @default(autoincrement())
+  name         String       @unique
+  description  String?
+  day          Day
+  status       Duration
+  startTime    DateTime
+  endTime      DateTime
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
   attendances  Attendance[]
-  subject      Subject      @relation(fields: [subjectId], references: [id])
+  subject      Subjects     @relation(fields: [subjectId], references: [id])
   subjectId    Int
-  class        Class        @relation(fields: [classId], references: [id])
+  class        Classes      @relation(fields: [classId], references: [id])
   classId      Int
-  staff        Staff        @relation(fields: [staffId], references: [id])
+  staff        Staffs       @relation(fields: [staffId], references: [id])
   staffId      String
   assignmentId Int?
-  assignment   Assignment?  @relation(fields: [assignmentId], references: [id])
+  assignment   Assignments? @relation(fields: [assignmentId], references: [id])
 }
 
-model ReportCard {
-  id              Int       @id @default(autoincrement())
+model ReportCards {
+  id              Int             @id @default(autoincrement())
   testScore       Float
   assignmentScore Float
   examScore       Float
   attendanceScore Float
+  status          ReportCardState
   teacherComment  String
   generalComment  String
-  subjects        Subject[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  subjects        Subjects[]
   studentId       String?
-  student         Student?  @relation(fields: [studentId], references: [id])
+  student         Students?       @relation(fields: [studentId], references: [id])
 }
 
 model Fees {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   name        String
   description String?
   receipt     String?
   amount      Float
+  status      FeeStatus
   studentId   String?
-  student     Student? @relation(fields: [studentId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  student     Students? @relation(fields: [studentId], references: [id])
 }
 
-model Event {
+model Events {
   id          Int      @id @default(autoincrement())
   title       String
   description String?
+  status      Duration
   date        DateTime
   duration    String
-  class       Class?   @relation(fields: [classId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  class       Classes? @relation(fields: [classId], references: [id])
   classId     Int?
 }
 
-model Announcement {
-  id          Int      @id @default(autoincrement())
+model Announcements {
+  id          Int                @id @default(autoincrement())
   title       String
   description String?
+  status      AnnouncementStatus
   date        DateTime
-  class       Class?   @relation(fields: [classId], references: [id])
+  class       Classes?           @relation(fields: [classId], references: [id])
   classId     Int?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
 }
 
 enum Gender {
@@ -275,10 +311,73 @@ enum Gender {
   FEMALE
 }
 
+enum SchoolStatus {
+  ACTIVE
+  BLOCKED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SubjectStatus {
+  ACTIVE
+  PURSED
+}
+
+enum UserCondition {
+  BLOCKED
+  DELETED
+  ACTIVE
+  SUSPENDED
+  EXPELLED
+  GRADUATED
+  MUTUALEXIT
+  SACKED
+  LEAVE
+  PENDING
+  TRANSFERED
+}
+
+enum ClassCondition {
+  ACTIVE
+  DELETED
+  CLOSED
+  SUSPENDED
+}
+
+enum ReportCardState {
+  COMPLETED
+  INCOMPLETE
+}
+
+enum Duration {
+  UPCOMING
+  STARTED
+  ONGOING
+  ENDED
+}
+
+enum FeeStatus {
+  PARTIAL
+  PAID
+  UNPAID
+}
+
+enum AnnouncementStatus {
+  PUBLISHED
+  EXPIRED
+  PENDING
+}
+
 enum SchoolType {
   PRIMARY
   SECONDARY
   TERTIARY
+}
+
+enum SchoolSetup {
+  SINGLE
+  GROUP
 }
 
 enum StaffStatus {
@@ -310,10 +409,11 @@ enum Day {
 
 enum Role {
   SUPERADMIN
-  PLATFORMADMIN
+  DANIRAADMIN
   SCHOOLADMIN
+  GROUPSCHOOLADMIN
   SUBSCHOOLADMIN
-  TEACHER
+  SCHOOLSTAFF
   STUDENT
   GUARDIAN
 }
