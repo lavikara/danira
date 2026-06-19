@@ -1,0 +1,20 @@
+### danira admin login
+POST http://localhost:1759/auth/login
+Content-Type: application/json
+
+{
+    "email":"temikara@yopmail.com",
+    "password":"Password123!"
+}
+
+### super admin create school
+POST http://localhost:1759/auth/danira/signup-single-school
+Content-Type: application/json
+
+{
+    "type": "SECONDARY",
+    "email": "kolokolo@ypmail.com",
+    "name": "ajan kolokolo secondary school",
+    "address":"11,taiwo solarin close, ebute, ikorodu lagos.",
+    "phoneNumber":"08967653452"
+}
