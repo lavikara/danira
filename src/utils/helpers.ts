@@ -1,3 +1,6 @@
+import { RelationKeys } from "../types/definitions.js";
+import { Users } from "../generated/browser.js";
+
 export const generateRandomString = (): string => {
   const lower = "abcdefghijklmnopqrstuvwxyz";
   const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -27,4 +30,17 @@ export const generateRandomString = (): string => {
   }
 
   return result;
+};
+
+export const getRelationKey = (obj: Users | {}): string | undefined => {
+  const relationKeys: RelationKeys[] = [
+    "admins",
+    "students",
+    "staffs",
+    "guardians",
+  ];
+  const key = relationKeys.find(
+    (key: string) => (obj as any)[key] !== undefined,
+  );
+  return key;
 };
