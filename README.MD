@@ -36,7 +36,7 @@ This repository contains the backend for a school management system. It uses:
 Create a `.env.local` or `.env` file at the repo root with the following values:
 
 ```env
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+POSTGRES_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
 SERVER_PORT=4000
 ```
 
@@ -98,7 +98,7 @@ This command runs TypeScript watch mode and restarts the server with `nodemon` a
 
 - The current implementation only exposes a single root route in `src/index.ts`.
 - `src/routes/user.ts` exists as a router placeholder but is not mounted in the server yet.
-- The Prisma client is configured for PostgreSQL and expects a valid `DATABASE_URL`.
+- The Prisma client is configured for PostgreSQL and expects a valid `POSTGRES_URL`.
 - If you add new routes, mount them in `src/index.ts` and wire any new controllers or routers.
 
 ## TypeScript
