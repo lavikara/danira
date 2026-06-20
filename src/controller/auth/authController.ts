@@ -1,6 +1,6 @@
 import { type Request, type Response, type NextFunction } from "express";
 import bcrypt from "bcryptjs";
-import { sign, verify } from "../../utils/jwtToken.js";
+import { sign, verify } from "../../services/jwtService/jwtService.js";
 import { queryUsersTableByEmail } from "../../services/dbServices/usersTable.js";
 import { LoginInput } from "../../middleware/zodvalidate/schema/auth/authSchemas.js";
 import { SuccessResponse, ApiError } from "../../utils/apiResponse.js";
