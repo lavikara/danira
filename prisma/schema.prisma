@@ -16,6 +16,7 @@ model Users {
   lastName    String
   phoneNumber String
   address     String
+  isVerified  Boolean
   gender      Gender
   role        Role
   status      UserCondition

@@ -247,7 +247,7 @@ async function main(): Promise<void> {
   console.log("👤  Seeding Admins …");
 
   // 5a. Super admin — Danira Platform
-  const superUser = await prismaClient.users.create({
+  const superAdmin = await prismaClient.users.create({
     data: {
       username: "super_temikara",
       email: yop("temikara"),
@@ -255,6 +255,7 @@ async function main(): Promise<void> {
       status: "ACTIVE",
       firstName: "Temitayo",
       lastName: "Kara",
+      isVerified: true,
       phoneNumber: phone(201),
       address: "104, Taiwo Close, Ikorodu, Lagos.",
       gender: Gender.MALE,
@@ -263,7 +264,33 @@ async function main(): Promise<void> {
   });
   await prismaClient.admins.create({
     data: {
-      userId: superUser.id,
+      userId: superAdmin.id,
+      type: null,
+      schoolIds: [],
+      schools: { connect: [] },
+      groupId: null,
+    },
+  });
+
+  // 5a. Danira admin — Danira Platform
+  const daniraAdmin = await prismaClient.users.create({
+    data: {
+      username: "danira_omolayo",
+      email: yop("omolayo"),
+      password,
+      status: "ACTIVE",
+      firstName: "Omolayo",
+      lastName: "Omodele",
+      isVerified: false,
+      phoneNumber: phone(201),
+      address: "44, Igbo Olomu Close, Agric, Ikorodu, Lagos.",
+      gender: Gender.MALE,
+      role: Role.DANIRAADMIN,
+    },
+  });
+  await prismaClient.admins.create({
+    data: {
+      userId: daniraAdmin.id,
       type: null,
       schoolIds: [],
       schools: { connect: [] },
@@ -280,6 +307,7 @@ async function main(): Promise<void> {
       status: "ACTIVE",
       firstName: "Ngozi",
       lastName: "Eze",
+      isVerified: false,
       phoneNumber: phone(201),
       address: "12 Sunrise Avenue, Jos, Plateau State",
       gender: Gender.FEMALE,
@@ -305,6 +333,7 @@ async function main(): Promise<void> {
       status: "ACTIVE",
       firstName: "Tunde",
       lastName: "Bakare",
+      isVerified: false,
       phoneNumber: phone(202),
       address: "5 Horizon Close, Abuja, FCT",
       gender: Gender.MALE,
@@ -347,6 +376,7 @@ async function main(): Promise<void> {
           status: "ACTIVE",
           firstName,
           lastName,
+          isVerified: false,
           phoneNumber: phone(300 + i),
           address: `Admin Quarters, ${school.schoolName}`,
           gender,
@@ -498,6 +528,7 @@ async function main(): Promise<void> {
           status: "ACTIVE",
           firstName,
           lastName,
+          isVerified: false,
           phoneNumber: phone(400 + i),
           address: `Staff Block ${i + 1}, ${schools[i % schools.length].schoolName}`,
           gender,
@@ -672,6 +703,7 @@ async function main(): Promise<void> {
           status: "ACTIVE",
           firstName,
           lastName,
+          isVerified: false,
           phoneNumber: phone(500 + i),
           address: `${i + 1} Guardian Close, Jos, Plateau State`,
           gender,
@@ -738,6 +770,7 @@ async function main(): Promise<void> {
           status: "ACTIVE",
           firstName,
           lastName,
+          isVerified: false,
           phoneNumber: phone(600 + i),
           address: `${i + 1} Student Hostel, ${schools[i % schools.length].schoolName}`,
           gender,
