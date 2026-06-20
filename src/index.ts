@@ -1,32 +1,36 @@
-import express, { type Request, type Response } from "express";
+import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 dotenv.config();
-import { prisma } from "./utils/prisma.js";
-import { Router } from "express";
+import { globalErrorHandler } from "./middleware/errorHandler/globalErrorHandler.js";
 
-const router = Router();
 const app = express();
 const PORT = process.env.SERVER_PORT;
+
+import danira from "./routes/danira/daniraRouter.js";
+import authRouter from "./routes/auth/authRouter.js";
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cors());
 
-app.get("/", async (req: Request, res: Response) => {
-  const allStaffs = await prisma.student.findMany({
-    include: {
-      school: true,
-      attendances: true,
-      fees: true,
-      subject: true,
-    },
-  });
-  res.status(200).send({
-    status: "success",
-    data: allStaffs,
-  });
-});
+/**
+ *    This route handles all kind of danira admin process
+ *
+ *    • 1   Signup single school
+ */
+app.use("/danira", danira);
+
+/**
+ *    This route handles all kind of onboarding process
+ *
+ *    • 1   Login of all types of user
+ *    • 2   Forgot password
+ *    • 3   Reset password
+ */
+app.use("/auth", authRouter);
+
+app.use(globalErrorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port 🗼 🗼 ${PORT} 🗼 🗼`);
