@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { userDataSchema } from "../user/userShema.js";
+import { userDataSchema } from "../user/userSchema.js";
 import {
   SchoolType,
   SchoolSetup,
