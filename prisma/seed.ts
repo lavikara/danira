@@ -137,10 +137,10 @@ async function main(): Promise<void> {
   console.log("🏫  Seeding SchoolGroups …");
 
   const groupA = await prismaClient.schoolGroups.create({
-    data: { name: "Sunrise Educational Group", status: "ACTIVE" },
+    data: { groupName: "Sunrise Educational Group", status: "APPROVED" },
   });
   const groupB = await prismaClient.schoolGroups.create({
-    data: { name: "Horizon Learning Network", status: "ACTIVE" },
+    data: { groupName: "Horizon Learning Network", status: "APPROVED" },
   });
 
   // ── 4. SCHOOLS (12) ──────────────────────────────────────────────────────
@@ -219,7 +219,7 @@ async function main(): Promise<void> {
         data: {
           type: s.type,
           setup: s.setup,
-          status: "ACTIVE",
+          status: "APPROVED",
           isApproved: true,
           schoolName: s.schoolName,
           address: `${s.schoolName} Campus Road, Nigeria`,
@@ -278,7 +278,7 @@ async function main(): Promise<void> {
       username: "danira_omolayo",
       email: yop("omolayo"),
       password,
-      status: "ACTIVE",
+      status: "PENDING",
       firstName: "Omolayo",
       lastName: "Omodele",
       isVerified: false,
@@ -304,7 +304,7 @@ async function main(): Promise<void> {
       username: "ngozi.eze.groupadmin",
       email: yop("ngozi.eze.groupadmin"),
       password,
-      status: "ACTIVE",
+      status: "PENDING",
       firstName: "Ngozi",
       lastName: "Eze",
       isVerified: false,
@@ -330,7 +330,7 @@ async function main(): Promise<void> {
       username: "tunde.bakare.groupadmin",
       email: yop("tunde.bakare.groupadmin"),
       password,
-      status: "ACTIVE",
+      status: "PENDING",
       firstName: "Tunde",
       lastName: "Bakare",
       isVerified: false,
@@ -373,7 +373,7 @@ async function main(): Promise<void> {
           username,
           email: yop(username),
           password,
-          status: "ACTIVE",
+          status: "PENDING",
           firstName,
           lastName,
           isVerified: false,
@@ -525,7 +525,7 @@ async function main(): Promise<void> {
           username: `${username}${i + 1}`,
           email: yop(`${username}${i + 1}`),
           password,
-          status: "ACTIVE",
+          status: "PENDING",
           firstName,
           lastName,
           isVerified: false,
@@ -700,7 +700,7 @@ async function main(): Promise<void> {
           username: `${username}${i + 1}`,
           email: yop(`${username}${i + 1}`),
           password,
-          status: "ACTIVE",
+          status: "PENDING",
           firstName,
           lastName,
           isVerified: false,
@@ -767,7 +767,7 @@ async function main(): Promise<void> {
           username: `${username}${i + 1}`,
           email: yop(`${username}${i + 1}`),
           password,
-          status: "ACTIVE",
+          status: "PENDING",
           firstName,
           lastName,
           isVerified: false,
