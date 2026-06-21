@@ -2,7 +2,12 @@ import { type Request, type Response, type NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import { sign, verify } from "../../services/jwtService/jwtService.js";
 import { queryUsersTableByEmail } from "../../services/dbServices/usersTable.js";
-import { LoginInput } from "../../middleware/zodvalidate/schema/auth/authSchemas.js";
+import { SignupSchoolInput } from "../../middleware/zodvalidate/schema/school/schoolSchemas.js";
+import {
+  LoginInput,
+  ResetPasswordInput,
+  ForgotPasswordInput,
+} from "../../middleware/zodvalidate/schema/auth/authSchemas.js";
 import { SuccessResponse, ApiError } from "../../utils/apiResponse.js";
 import { Users } from "../../generated/browser.js";
 import { getRelationKey } from "../../utils/helpers.js";
@@ -18,7 +23,7 @@ export const login = async (
   req: Request<LoginInput["body"]>,
   res: Response,
   next: NextFunction,
-) => {
+): Promise<void> => {
   const { email, password } = req.body;
   const omitPassword: boolean = false;
 
@@ -60,10 +65,10 @@ export const login = async (
  *    Reset password logic for all users
  */
 export const resetPassword = async (
-  req: Request,
+  req: Request<ResetPasswordInput["body"]>,
   res: Response,
   next: NextFunction,
-) => {
+): Promise<void> => {
   const { token, newPassword } = req.body;
   const verifiedJwt = verify(token) as Record<string, unknown>;
 
@@ -96,6 +101,13 @@ export const resetPassword = async (
   const queryOptions: UserQueryOptions = {
     omitPassword: true,
   };
+  /**
+   *    1 update user password
+   *    2 update user is verified field to true
+   *    3 update school status to active
+   *    If group of schools, update group status to active
+   *    4 update school group status to active
+   */
   const updated = await updateUserPassword(
     result.user.id,
     hashedPassword,
@@ -110,10 +122,10 @@ export const resetPassword = async (
  *    Forgot password logic for all users
  */
 export const forgotPassword = async (
-  req: Request,
+  req: Request<ForgotPasswordInput["body"]>,
   res: Response,
   next: NextFunction,
-) => {
+): Promise<void> => {
   const { email } = req.body;
   const omitPassword: boolean = false;
   const user = await queryUsersTableByEmail(email, omitPassword);
@@ -135,19 +147,19 @@ export const forgotPassword = async (
     const token = sign({ [relationKey]: userRelation.id }, 3600);
     const urlData = { token };
     forgotPasswordMail(user as any, urlData);
-    return res
-      .status(201)
-      .send(new SuccessResponse("Reset link sent to email", {}));
+    res.status(201).send(new SuccessResponse("Reset link sent to email", {}));
   }
   const error = new ApiError(422, "Unprocessable Entity");
   return next(error);
 };
 
 /**
- *    Signup logic for all users
+ *    Signup logic for schols
  */
 export const schoolSignup = (
-  req: Request,
+  req: Request<SignupSchoolInput>,
   res: Response,
   next: NextFunction,
-) => {};
+): Promise<void> => {
+  throw new Error("test");
+};
