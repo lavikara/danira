@@ -1,12 +1,10 @@
 import { z } from "zod";
+import { userDataSchema } from "../user/userShema.js";
 import {
   SchoolType,
   SchoolSetup,
   SchoolStatus,
-  Role,
-  UserCondition,
 } from "../../../../generated/enums.js";
-import { Gender } from "../../../../generated/enums.js";
 
 const schoolDataSchema = z.object({
   type: z.enum(SchoolType),
@@ -19,23 +17,17 @@ const schoolDataSchema = z.object({
   status: z.enum(SchoolStatus),
 });
 
-const adminDataSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  email: z.email("Invalid admin email address"),
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  phoneNumber: z.string(),
-  address: z.string(),
-  isVerified: z.boolean(),
-  role: z.enum(Role),
-  gender: z.enum(Gender),
-  status: z.enum(UserCondition),
+const groupDataSchema = z.object({
+  groupName: z.string().min(3, "Group name is too short").nullable(),
+  status: z.enum(SchoolStatus).nullable(),
 });
 
-export const signupSingleSchoolSchema = z.object({
+export const signupSchoolSchema = z.object({
   schoolData: schoolDataSchema,
-  adminData: adminDataSchema,
+  groupData: groupDataSchema,
+  adminData: userDataSchema,
 });
 
 // Infer the type for application-wide type safety
-export type SignupSingleSchoolInput = z.infer<typeof signupSingleSchoolSchema>;
+export type groupDataInput = z.infer<typeof groupDataSchema>;
+export type SignupSchoolInput = z.infer<typeof signupSchoolSchema>;
