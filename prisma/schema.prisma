@@ -41,7 +41,7 @@ model Admins {
 
 model SchoolGroups {
   id        String       @id @default(uuid())
-  name      String       @unique
+  groupName String       @unique
   status    SchoolStatus
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -329,6 +329,7 @@ enum UserCondition {
   BLOCKED
   DELETED
   ACTIVE
+  DEACTIVATED
   SUSPENDED
   EXPELLED
   GRADUATED
