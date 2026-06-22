@@ -11,7 +11,7 @@ import {
   TermType,
 } from "../src/generated/client.js";
 import bcrypt from "bcryptjs";
-import { prismaClient } from "../src/utils/prismaClient";
+import { prismaClient } from "../src/services/dbServices/dbClient/prismaClient.js";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
