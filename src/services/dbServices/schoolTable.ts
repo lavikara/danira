@@ -1,7 +1,22 @@
-import { prismaClient } from "../../utils/prismaClient.js";
+import { prismaClient } from "../../services/dbServices/dbClient/prismaClient.js";
 import { SignupSchoolInput } from "../../middleware/zodvalidate/schema/school/schoolSchemas.js";
 import { Schools, Users, Admins } from "../../generated/browser.js";
 
+/**
+ * Create a single school with its initial admin and user records.
+ *
+ * This function performs a database transaction that:
+ * - creates a school record using data.schoolData
+ * - creates a user record for the school's admin using data.adminData
+ * - creates an admin record that links the user and the school
+ * - updates the school to include the created admin in its relation
+ *
+ * All operations run inside a single transaction so that either all changes
+ * succeed or none are committed.
+ *
+ * @param data - SignupSchoolInput containing schoolData and adminData
+ * @returns An object containing the created/updated school, user and admin
+ */
 export const signupSingleSchool = async (
   data: SignupSchoolInput,
 ): Promise<{ school: Schools; user: Users; admin: Admins }> => {
@@ -30,6 +45,22 @@ export const signupSingleSchool = async (
   return result as any;
 };
 
+/**
+ * Create a school that belongs to a group, with its initial admin and user.
+ *
+ * This function performs a database transaction that:
+ * - creates a school group using data.groupData
+ * - creates a school using data.schoolData
+ * - creates a user for the school's admin using data.adminData
+ * - creates an admin record linking the user and the school
+ * - updates the school group to include the new admin and school
+ * - updates the school to set its groupId and include the admin relation
+ *
+ * All operations are executed inside a single transaction for atomicity.
+ *
+ * @param data - SignupSchoolInput containing groupData, schoolData and adminData
+ * @returns An object containing the created/updated school, user and admin
+ */
 export const signupGroupSchool = async (
   data: SignupSchoolInput,
 ): Promise<{ school: Schools; user: Users; admin: Admins }> => {
@@ -73,7 +104,12 @@ export const signupGroupSchool = async (
 };
 
 /**
- *    Check if school name or schoole email already exist
+ * Query the schools table to check existence by email or school name.
+ *
+ * Useful for validating uniqueness during signup flows.
+ *
+ * @param data - A Schools object with email and/or schoolName fields to check
+ * @returns The first matching Schools record or null if none found
  */
 export const querySchoolTableByEmailAndSchoolName = async (
   data: Schools,
