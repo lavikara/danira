@@ -1,4 +1,4 @@
-import { prismaClient } from "../../utils/prismaClient.js";
+import { prismaClient } from "./dbClient/prismaClient.js";
 import { Users } from "../../generated/browser.js";
 import { UserQueryOptions } from "../../types/definitions.js";
 import { queryAdminsTableById } from "./adminTable.js";
