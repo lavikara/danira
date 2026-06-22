@@ -1,6 +1,5 @@
 import { prismaClient } from "./dbClient/prismaClient.js";
 import { Users } from "../../generated/browser.js";
-import { UserQueryOptions } from "../../types/definitions.js";
 import { queryAdminsTableById } from "./adminTable.js";
 
 /**
@@ -8,7 +7,7 @@ import { queryAdminsTableById } from "./adminTable.js";
  */
 export const queryUsersTableByEmail = async (
   email: string,
-  omitPassword: boolean,
+  omitPassword: boolean = true,
 ): Promise<Omit<Users, "password"> | null> => {
   return await prismaClient.users.findUnique({
     where: { email },
@@ -30,13 +29,12 @@ export const queryUsersTableByEmail = async (
 export const updateUserPassword = async (
   id: string,
   password: string,
-  queryOptions: UserQueryOptions,
 ): Promise<Omit<Users, "password"> | null> => {
   return await prismaClient.users.update({
     where: { id },
     data: { password, isVerified: true },
     omit: {
-      password: queryOptions.omitPassword ? true : false,
+      password: true,
     },
   });
 };

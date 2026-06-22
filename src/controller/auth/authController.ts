@@ -13,7 +13,6 @@ import { Users } from "../../generated/browser.js";
 import { getRelationKey } from "../../utils/helpers.js";
 import { queryUserByRoleId } from "../../services/dbServices/usersTable.js";
 import { forgotPasswordMail } from "../../services/emailServices/emailService.js";
-import { UserQueryOptions } from "../../types/definitions.js";
 import { updateUserPassword } from "../../services/dbServices/usersTable.js";
 
 /**
@@ -98,9 +97,7 @@ export const resetPassword = async (
   }
 
   const hashedPassword = bcrypt.hashSync(newPassword);
-  const queryOptions: UserQueryOptions = {
-    omitPassword: true,
-  };
+
   /**
    *    1 update user password
    *    2 update user is verified field to true
@@ -108,11 +105,7 @@ export const resetPassword = async (
    *    If group of schools, update group status to active
    *    4 update school group status to active
    */
-  const updated = await updateUserPassword(
-    result.user.id,
-    hashedPassword,
-    queryOptions,
-  );
+  const updated = await updateUserPassword(result.user.id, hashedPassword);
   if (updated) {
     res.status(200).send(new SuccessResponse("Password updated", updated));
   }
