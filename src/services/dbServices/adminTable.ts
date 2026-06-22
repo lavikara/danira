@@ -1,4 +1,4 @@
-import { prismaClient } from "../../utils/prismaClient.js";
+import { prismaClient } from "./dbClient/prismaClient.js";
 import { Admins, Users } from "../../generated/browser.js";
 
 export const queryAdminsTableById = async (
