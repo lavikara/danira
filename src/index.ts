@@ -1,4 +1,6 @@
 import express from "express";
+import { pinoHttp } from "pino-http";
+import { logger } from "./utils/logger.js";
 import cors from "cors";
 import dotenv from "dotenv";
 dotenv.config();
@@ -14,20 +16,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cors());
 
-/**
- *    This route handles all kind of danira admin process
- *
- *    • 1   Signup single school
- */
+app.use(pinoHttp({ logger }));
+
 app.use("/danira", danira);
 
-/**
- *    This route handles all kind of onboarding process
- *
- *    • 1   Login of all types of user
- *    • 2   Forgot password
- *    • 3   Reset password
- */
 app.use("/auth", authRouter);
 
 app.use(globalErrorHandler);
