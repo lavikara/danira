@@ -265,7 +265,7 @@ async function main(): Promise<void> {
   await prismaClient.admins.create({
     data: {
       userId: superAdmin.id,
-      type: null,
+      type: SchoolSetup.DANIRA,
       schoolIds: [],
       schools: { connect: [] },
       groupId: null,
@@ -291,7 +291,7 @@ async function main(): Promise<void> {
   await prismaClient.admins.create({
     data: {
       userId: daniraAdmin.id,
-      type: null,
+      type: SchoolSetup.DANIRA,
       schoolIds: [],
       schools: { connect: [] },
       groupId: null,

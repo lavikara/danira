@@ -380,6 +380,7 @@ enum SchoolType {
 enum SchoolSetup {
   SINGLE
   GROUP
+  DANIRA
 }
 
 enum StaffStatus {
