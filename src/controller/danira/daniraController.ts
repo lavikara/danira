@@ -66,7 +66,7 @@ export const daniraSingleSchoolSignup = async (
       ? (created = await signupSingleSchool(req.body))
       : (created = await signupGroupSchool(req.body));
     if (created) {
-      const token = sign({
+      const token = await sign({
         admins: created.admin.id,
       });
       const urlData = { token };
