@@ -36,9 +36,7 @@ export const verify = (token: string | undefined): {} => {
         if (error) {
           return logger.error({ message: error.message }, "JWT Error");
         }
-
-        // Typecast the safely verified payload to your custom interface
-        resolve(decoded as any);
+        resolve(decoded as JwtPayload);
       },
     );
   });
