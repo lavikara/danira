@@ -1,5 +1,6 @@
 import * as nodemailer from "nodemailer";
 import { SignupSchoolInput } from "../../middleware/zodvalidate/schema/school/schoolSchemas.js";
+import { logger } from "../../utils/logger.js";
 import { Users } from "../../generated/browser.js";
 import { crateSchoolTemplate } from "./emailTemplates/createSchoolTemplates.js";
 import { forgotPasswordTemplate } from "./emailTemplates/forgotPasswordTemplate.js";
@@ -25,10 +26,9 @@ export const schoolCreatedMail = (
   };
   transporter.sendMail(createSchoolMailOptions, (error, info) => {
     if (error) {
-      console.log(error);
-      throw error;
+      logger.error({ message: error.message }, "Mail not delivered");
     } else {
-      console.log(info);
+      logger.info({ message: info.envelope }, "Mail delivered");
     }
   });
 };
@@ -42,10 +42,9 @@ export const forgotPasswordMail = (data: Users, urlData: { token: string }) => {
   };
   transporter.sendMail(forgotPasswordMailOptions, (error, info) => {
     if (error) {
-      console.log(error);
-      throw error;
+      logger.error({ message: error.message }, "Mail not delivered");
     } else {
-      console.log(info);
+      logger.info({ message: info.envelope }, "Mail delivered");
     }
   });
 };
