@@ -21,7 +21,7 @@ export const authJwtAndRole = (authorizedRoles: Role[]) => {
       return next(error);
     }
     const token = authHeader.split(" ")[1];
-    const verifiedJwt = verify(token) as Record<string, unknown>;
+    const verifiedJwt = (await verify(token)) as Record<string, unknown>;
     const key: string | undefined = Object.keys(verifiedJwt)[0];
     const userId = verifiedJwt[key as string] as string;
     req.userId = userId;
