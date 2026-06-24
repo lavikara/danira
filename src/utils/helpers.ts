@@ -32,7 +32,7 @@ export const generateRandomString = (): string => {
   return result;
 };
 
-export const getRelationKey = (obj: Users | {}): string | undefined => {
+export const getRelationKey = (obj: Users | {}): RelationKeys | undefined => {
   const relationKeys: RelationKeys[] = [
     "admins",
     "students",
@@ -40,7 +40,7 @@ export const getRelationKey = (obj: Users | {}): string | undefined => {
     "guardians",
   ];
   const key = relationKeys.find(
-    (key: string) => (obj as any)[key] !== undefined,
+    (relationKey: RelationKeys) => relationKey in obj,
   );
   return key;
 };
