@@ -1,4 +1,4 @@
-import { Users } from "../../../generated/browser.js";
+import { Users } from '../../../generated/browser.js';
 
 export const forgotPasswordTemplate = (
   data: Users,
@@ -71,7 +71,7 @@ table {border-collapse: collapse;}
 
 <!-- Preheader text (hidden) -->
 <div style="display:none; font-size:1px; color:#f1f5f9; line-height:1px; max-height:0px; max-width:0px; opacity:0; overflow:hidden; mso-hide:all; font-family:sans-serif;">
-  We received a request to reset your EduAdmin Pro password. Use the link inside to create a new password — it expires in 1 hour.
+  We received a request to reset your EduAdmin Pro password. Use the link inside to create a new password, it expires in 1 hour.
 </div>
 
 <div role="article" aria-roledescription="email" lang="en" style="background-color:#f1f5f9;">
