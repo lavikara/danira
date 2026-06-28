@@ -1,15 +1,14 @@
-import { type Request, type Response, type NextFunction } from "express";
-import bcrypt from "bcryptjs";
-import { SignupSchoolInput } from "../../middleware/zodvalidate/schema/school/schoolSchemas.js";
-import { schoolCreatedMail } from "../../services/emailServices/emailService.js";
-import { sign } from "../../services/jwtService/jwtService.js";
-import { generateRandomString } from "../../utils/helpers.js";
-import { SuccessResponse, ApiError } from "../../utils/apiResponse.js";
+import { type Request, type Response, type NextFunction } from 'express';
+import { SignupSchoolInput } from '../../middleware/zodvalidate/schema/school/schoolSchemas.js';
 import {
-  signupSingleSchool,
-  signupGroupSchool,
-  querySchoolTableByEmailAndSchoolName,
-} from "../../services/dbServices/schoolTable.js";
+  schoolCreatedByDaniraMail,
+  schoolApprovedMail,
+} from '../../services/emailServices/emailService.js';
+import { sign } from '../../services/jwtService/jwtService.js';
+import { SuccessResponse, ApiError } from '../../utils/apiResponse.js';
+import { ReturnResponse } from '../../types/definitions.js';
+import { schoolSignup } from '../../services/schoolService/createSchool.js';
+import { approveSchoolService } from '../../services/schoolService/approveSchoolService.js';
 
 /**
  *    Single school signup logic for super admin
@@ -18,69 +17,43 @@ export const daniraSingleSchoolSignup = async (
   req: Request<SignupSchoolInput>,
   res: Response,
   next: NextFunction,
-) => {
-  if (req.body.schoolData.email !== req.body.adminData.email) {
-    const error = new ApiError(422, "Admin must use school email.");
-    return next(error);
+): Promise<void> => {
+  const signupSchool: ReturnResponse = await schoolSignup(req.body, req?.userId, req?.userRole);
+  if (!signupSchool?.success) {
+    const error = new ApiError(422, signupSchool?.message);
+    next(error);
+    return;
   }
 
-  if (
-    req.body.schoolData.setup === "GROUP" &&
-    req.body.adminData.role !== "GROUPSCHOOLADMIN"
-  ) {
-    const error = new ApiError(
-      422,
-      "Role for group school admin must be GROUPSCHOOLADMIN.",
-    );
-    return next(error);
+  if (signupSchool?.success) {
+    const token = await sign({
+      admins: signupSchool.data.admin.id,
+    });
+    const urlData = { token };
+    schoolCreatedByDaniraMail(req.body, urlData);
+    res.status(201).send(new SuccessResponse(signupSchool?.message, signupSchool?.data.school));
+    return;
   }
-
-  if (
-    req.body.schoolData.setup === "SINGLE" &&
-    req.body.adminData.role !== "SCHOOLADMIN"
-  ) {
-    const error = new ApiError(
-      422,
-      "Role for single school admin must be SCHOOLADMIN.",
-    );
-    return next(error);
-  }
-
-  const randomPassword = generateRandomString();
-  const defaultPassword = bcrypt.hashSync(randomPassword);
-  req.body.adminData.password = defaultPassword;
-  req.body.schoolData.createdBy = req.userId;
-  req.body.schoolData.approvedBy = req.userId;
-  const schoolAlreadyExist = await querySchoolTableByEmailAndSchoolName(
-    req.body.schoolData,
-  );
-
-  if (schoolAlreadyExist) {
-    const error = new ApiError(409, "Conflicting records");
-    return next(error);
-  }
-
-  if (!schoolAlreadyExist) {
-    let created = null;
-    req.body.schoolData.setup === "SINGLE"
-      ? (created = await signupSingleSchool(req.body))
-      : (created = await signupGroupSchool(req.body));
-    if (created) {
-      const token = await sign({
-        admins: created.admin.id,
-      });
-      const urlData = { token };
-      schoolCreatedMail(req.body, urlData);
-      return res
-        .status(201)
-        .send(new SuccessResponse("School Created", created.school));
-    }
-  }
-
-  const error = new ApiError(422, "Unprocessable Entity");
-  return next(error);
 };
 
-export const invalidateSchool = (req: Request, res: Response) => {};
-
-export const approveSchool = (req: Request, res: Response) => {};
+export const approveSchool = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const approved: ReturnResponse = await approveSchoolService(req.body, req?.userId);
+  if (!approved?.success) {
+    const error = new ApiError(422, approved?.message);
+    next(error);
+    return;
+  }
+  if (approved?.success) {
+    const token = await sign({
+      admins: approved.data.users.admins.id,
+    });
+    const urlData = { token };
+    schoolApprovedMail(approved.data, urlData);
+    res.status(200).send(new SuccessResponse(approved?.message, approved?.data.schools));
+    return;
+  }
+};
