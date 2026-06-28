@@ -1,4 +1,4 @@
-import { ApiResponse } from "../types/definitions.js";
+import { ApiResponse } from '../types/definitions.js';
 
 export class SuccessResponse<T> implements ApiResponse<T> {
   readonly success = true;
@@ -11,7 +11,7 @@ export class SuccessResponse<T> implements ApiResponse<T> {
 }
 
 export class ApiError extends Error {
-  readonly name = "ApiError";
+  readonly name = 'ApiError';
 
   constructor(
     public readonly statusCode: number,

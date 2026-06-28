@@ -1,24 +1,22 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const loginSchema = z.object({
   body: z.object({
-    email: z.email("Provide a valid email address"),
-    password: z.string().min(8, "Password must be at least 8 characters long"),
+    email: z.email('Provide a valid email address'),
+    password: z.string().min(8, 'Password must be at least 8 characters long'),
   }),
 });
 
 export const resetPasswordSchema = z.object({
   body: z.object({
-    token: z.string("Invalid token"),
-    newPassword: z
-      .string()
-      .min(8, "Password must be at least 8 characters long"),
+    token: z.string('Invalid token'),
+    newPassword: z.string().min(8, 'Password must be at least 8 characters long'),
   }),
 });
 
 export const forgotPasswordSchema = z.object({
   body: z.object({
-    email: z.email("Provide a valid email address"),
+    email: z.email('Provide a valid email address'),
   }),
 });
 

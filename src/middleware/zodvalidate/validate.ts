@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from "express";
-import { ZodObject, ZodError } from "zod";
+import { Request, Response, NextFunction } from 'express';
+import { ZodObject, ZodError } from 'zod';
 
 interface RequestSchemas {
   body?: ZodObject;
