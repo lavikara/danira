@@ -25,13 +25,7 @@ export const findUniqueUser = async (
   });
   if (!user) return null;
   // remove null relation fields for specific relation keys
-  const relationKeysToClean: RelationKeys[] = [
-    'admins',
-    'students',
-    'staffs',
-    'guardians',
-    'schools',
-  ];
+  const relationKeysToClean: RelationKeys[] = ['admins', 'students', 'staffs', 'guardians'];
   for (const relKey of relationKeysToClean) {
     if (relKey in user && (user as any)[relKey] === null) {
       delete (user as any)[relKey];
