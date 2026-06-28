@@ -56,8 +56,8 @@ model Schools {
   schoolName  String        @unique
   address     String
   phoneNumber String
-  createdBy   String
-  approvedBy  String
+  createdBy   String?
+  approvedBy  String?
   isApproved  Boolean
   status      SchoolStatus
   email       String        @unique
