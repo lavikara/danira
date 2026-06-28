@@ -3,8 +3,13 @@ import {
   Guardians,
   Admins,
   Staffs,
+  SchoolSetup,
   Students,
-} from "../generated/browser.js";
+  Schools,
+  SchoolGroups,
+} from '../generated/browser.js';
+import { SchoolDataInput } from '../middleware/zodvalidate/schema/school/schoolSchemas.js';
+import { UserDataInput } from '../middleware/zodvalidate/schema/user/userSchema.js';
 
 export interface UserToRelation {
   users: Users & {
@@ -12,8 +17,49 @@ export interface UserToRelation {
     admins?: Admins;
     staffs?: Staffs;
     students?: Students;
+    schools?: Schools;
   };
 }
+
+export interface UniqueSchoolData {
+  schools: Schools;
+  schoolGroups?: SchoolGroups;
+  users?: Users;
+}
+
+export interface SchoolAdminData {
+  userId: string;
+  schoolIds: string[];
+  schools: {
+    connect: {
+      id: string;
+    };
+  };
+  type: SchoolSetup;
+}
+
+export interface GroupData {
+  groupName: string | null;
+  status: 'BLOCKED' | 'ACTIVE' | 'PENDING' | 'APPROVED' | 'REJECTED' | null;
+}
+
+export interface SchoolUpdateData {
+  where: { id: any };
+  data: {
+    admins?: { connect: { id: string } };
+    schools?: { connect: { id: string } };
+    groupId?: { connect: { id: string } };
+    status?: string;
+  };
+}
+
+export type payloadType =
+  | SchoolDataInput
+  | UserDataInput
+  | SchoolAdminData
+  | GroupData
+  | SchoolUpdateData
+  | null;
 export interface ApiResponse<T = any> {
   success: boolean;
   message: string;
@@ -22,11 +68,13 @@ export interface ApiResponse<T = any> {
 }
 
 export type RelationKeys =
-  | "admins"
-  | "students"
-  | "staffs"
-  | "guardians"
-  | "users";
+  | 'admins'
+  | 'students'
+  | 'staffs'
+  | 'guardians'
+  | 'users'
+  | 'schools'
+  | 'schoolGroups';
 
 export type RelationKeysMap = {
   [K in RelationKeys]?: string;
@@ -41,12 +89,22 @@ export type IncludeQuery = {
 };
 
 export type OmitQuery = {
-  [K in
-    | keyof Users
-    | keyof Admins
-    | keyof Staffs
-    | keyof Guardians
-    | keyof Students]?: boolean;
+  [K in keyof Users | keyof Admins | keyof Staffs | keyof Guardians | keyof Students]?: boolean;
 };
 
-export type TableColumn = "email" | "id";
+export type TableColumn = 'email' | 'id' | 'schoolName' | 'groupName';
+
+export type TableColumnObject = {
+  [K in TableColumn]?: string;
+};
+
+export interface FindFirst {
+  table: RelationKeys;
+  column: TableColumnObject[];
+}
+
+export interface ReturnResponse<T = any> {
+  success: boolean;
+  message: string;
+  data?: T;
+}
