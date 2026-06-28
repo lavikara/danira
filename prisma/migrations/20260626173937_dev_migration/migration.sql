@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Schools" ALTER COLUMN "createdBy" DROP NOT NULL,
+ALTER COLUMN "approvedBy" DROP NOT NULL;
