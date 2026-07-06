@@ -10,7 +10,7 @@ import { updateUserPassword } from '../../services/dbServices/usersTable.js';
 import { findUniqueUser } from '../../services/dbServices/dbServices.js';
 import { RelationKeys, ReturnResponse } from '../../types/definitions.js';
 import { schoolCreatedBySignupMail } from '../../services/emailServices/emailService.js';
-import { schoolSignup } from '../../services/schoolService/createSchool.js';
+import { userSchoolSignup } from '../../services/schoolService/createSchool.js';
 import {
   LoginInput,
   ResetPasswordInput,
@@ -47,7 +47,7 @@ export const login = async (
 
   if (!userQuery[query.table].isVerified) {
     const error = new ApiError(
-      401,
+      400,
       'Please verify your email by using the forgot password feature.',
     );
     return next(error);
@@ -64,13 +64,15 @@ export const login = async (
 
   const validPassword = await compare(password, (userQuery[query.table] as any).password);
   if (!validPassword) {
-    const error = new ApiError(401, 'Unauthorised');
+    const error = new ApiError(400, 'Unauthorised');
     return next(error);
   }
   if (validPassword) {
     //   To-Do: unsign previous token when a new token is generated
     const token = await sign({ [relationKey]: userRelation.id });
-    res.status(200).send(new SuccessResponse('Access granted', token));
+    res
+      .status(200)
+      .send(new SuccessResponse('Access granted', { token, user: userQuery[query.table] }));
     return;
   }
 
@@ -174,14 +176,25 @@ export const forgotPassword = async (
 /**
  *    Signup logic for schools
  */
-export const userSchoolSignup = async (
+export const schoolSignup = async (
   req: Request<SignupSchoolInput>,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
-  const signupSchool: ReturnResponse = await schoolSignup(req.body, req?.userId, req?.userRole);
+  req.body.schoolData.isApproved = false;
+  req.body.schoolData.status = 'PENDING';
+  req.body.adminData.status = 'PENDING';
+  req.body.adminData.isVerified = false;
+  if (req.body.schoolData.setup === 'SINGLE') {
+    req.body.adminData.role = 'SCHOOLADMIN';
+    req.body.groupData.status = null;
+  } else {
+    req.body.adminData.role = 'GROUPSCHOOLADMIN';
+    req.body.groupData.status = 'PENDING';
+  }
+  const signupSchool: ReturnResponse = await userSchoolSignup(req.body, req?.userId, req?.userRole);
   if (!signupSchool?.success) {
-    const error = new ApiError(422, signupSchool?.message);
+    const error = new ApiError(409, signupSchool?.message);
     next(error);
     return;
   }
