@@ -1,5 +1,4 @@
 import { prismaClient } from '../dbServices/dbClient/prismaClient.js';
-import { SignupSchoolInput } from '../../middleware/zodvalidate/schema/school/schoolSchemas.js';
 import { generateRandomString } from '../../utils/helpers.js';
 import { Schools, Users, Admins } from '../../generated/browser.js';
 import { hash } from '../bcryptService/bcryptService.js';
@@ -14,12 +13,10 @@ import {
   ReturnResponse,
   SchoolAdminData,
   SchoolUpdateData,
+  SignupPayload,
 } from '../../types/definitions.js';
 
-const checkSignupPayload = (
-  data: SignupSchoolInput,
-  userId: string | undefined,
-): ReturnResponse => {
+const checkSignupPayload = (data: SignupPayload, userId: string | undefined): ReturnResponse => {
   if (!userId) {
     if (data.schoolData.isApproved || data.schoolData.status !== 'PENDING') {
       const error = { success: false, message: 'Invalid fields.' };
@@ -80,7 +77,7 @@ const checkSignupPayload = (
  * @returns An object containing the created/updated school, user and admin
  */
 const signupSchool = async (
-  data: SignupSchoolInput,
+  data: SignupPayload,
   userId: string | undefined,
   userRole: string | undefined,
 ): Promise<{ school: Schools; user: Users; admin: Admins }> => {
@@ -132,8 +129,59 @@ const signupSchool = async (
   return result as any;
 };
 
-export const schoolSignup = async (
-  data: SignupSchoolInput,
+export const userSchoolSignup = async (
+  data: SignupPayload,
+  userId?: string,
+  userRole?: string,
+): Promise<ReturnResponse> => {
+  const payloadValid = checkSignupPayload(data, userId);
+
+  if (payloadValid.success === false) {
+    return payloadValid;
+  }
+
+  const randomPassword = generateRandomString();
+  const defaultPassword = await hash(randomPassword);
+  const adminData = data.adminData as typeof data.adminData & { password: string };
+
+  adminData.password = defaultPassword;
+
+  const query = {
+    table: 'schools' as RelationKeys,
+    column: [{ email: data.schoolData.email }, { schoolName: data.schoolData.schoolName }],
+  };
+
+  const schoolAlreadyExist = await findFirst(query);
+  if (data.groupData.groupName) {
+    const groupAlreadyExist = await findUniqueSchool(
+      'schoolGroups',
+      'groupName',
+      data.groupData.groupName,
+    );
+    if (groupAlreadyExist) {
+      const error = { success: false, message: 'Conflicting records.' };
+      return error;
+    }
+  }
+
+  if (schoolAlreadyExist) {
+    const error = { success: false, message: 'Conflicting records.' };
+    return error;
+  }
+
+  if (!schoolAlreadyExist) {
+    const created = await signupSchool(data, userId, userRole);
+    if (created) {
+      const response = { success: true, message: 'School Created', data: created };
+      return response;
+    }
+  }
+
+  return { success: false, message: 'Unable to create school.' };
+};
+
+export const daniraSchoolSignup = async (
+  data: SignupPayload,
   userId?: string,
   userRole?: string,
 ): Promise<ReturnResponse> => {
