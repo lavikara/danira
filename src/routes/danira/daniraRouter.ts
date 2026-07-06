@@ -7,10 +7,7 @@ import {
   signupSchoolSchema,
   approveOrInvalidateSchoolSchema,
 } from '../../middleware/zodvalidate/schema/school/schoolSchemas.js';
-import {
-  approveSchool,
-  daniraSingleSchoolSignup,
-} from '../../controller/danira/daniraController.js';
+import { approveSchool, schoolSignup } from '../../controller/danira/daniraController.js';
 
 const router = Router();
 
@@ -21,7 +18,7 @@ router.post(
   '/signup-school',
   authJwtAndRole([Role.SUPERADMIN]),
   validate({ body: signupSchoolSchema }),
-  catchAsync(daniraSingleSchoolSignup),
+  catchAsync(schoolSignup),
 );
 
 router.post(

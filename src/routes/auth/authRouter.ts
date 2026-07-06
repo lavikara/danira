@@ -8,7 +8,7 @@ import {
   forgotPasswordSchema,
 } from '../../middleware/zodvalidate/schema/auth/authSchemas.js';
 import {
-  userSchoolSignup,
+  schoolSignup,
   login,
   resetPassword,
   forgotPassword,
@@ -44,6 +44,6 @@ router.post(
 /**
  *    This route handles school signup by a school admin.
  */
-router.post('/signup', validate({ body: signupSchoolSchema }), catchAsync(userSchoolSignup));
+router.post('/signup', validate({ body: signupSchoolSchema }), catchAsync(schoolSignup));
 
 export default router;
