@@ -7,18 +7,22 @@ import {
 import { sign } from '../../services/jwtService/jwtService.js';
 import { SuccessResponse, ApiError } from '../../utils/apiResponse.js';
 import { ReturnResponse } from '../../types/definitions.js';
-import { schoolSignup } from '../../services/schoolService/createSchool.js';
+import { daniraSchoolSignup } from '../../services/schoolService/createSchool.js';
 import { approveSchoolService } from '../../services/schoolService/approveSchoolService.js';
 
 /**
  *    Single school signup logic for super admin
  */
-export const daniraSingleSchoolSignup = async (
+export const schoolSignup = async (
   req: Request<SignupSchoolInput>,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
-  const signupSchool: ReturnResponse = await schoolSignup(req.body, req?.userId, req?.userRole);
+  const signupSchool: ReturnResponse = await daniraSchoolSignup(
+    req.body,
+    req?.userId,
+    req?.userRole,
+  );
   if (!signupSchool?.success) {
     const error = new ApiError(422, signupSchool?.message);
     next(error);
@@ -48,9 +52,7 @@ export const approveSchool = async (
     return;
   }
   if (approved?.success) {
-    const token = await sign({
-      admins: approved.data.users.admins.id,
-    });
+    const token = await sign({ admins: approved.data.users.admins.id }, 3600);
     const urlData = { token };
     schoolApprovedMail(approved.data, urlData);
     res.status(200).send(new SuccessResponse(approved?.message, approved?.data.schools));

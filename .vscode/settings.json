@@ -1,19 +1,18 @@
 {
   // Set Prettier as the default document formatter
   "editor.defaultFormatter": "esbenp.prettier-vscode",
-  
+
   // Format with Prettier automatically on file save
   "editor.formatOnSave": true,
-  
+
   // Run ESLint's auto-fix feature automatically on file save
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   },
-  
+
   // Ensure VS Code validates typescript files with ESLint
-  "eslint.validate": [
-    "javascript",
-    "typescript",
-    "typescriptreact"
-  ]
+  "eslint.validate": ["javascript", "typescript", "typescriptreact"],
+  "[prisma]": {
+    "editor.defaultFormatter": "Prisma.prisma"
+  }
 }

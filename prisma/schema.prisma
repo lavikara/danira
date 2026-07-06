@@ -14,7 +14,10 @@ model Users {
   password    String
   firstName   String
   lastName    String
+  designation String?
   phoneNumber String
+  country     String
+  state       String
   address     String
   isVerified  Boolean
   gender      Gender
@@ -50,24 +53,27 @@ model SchoolGroups {
 }
 
 model Schools {
-  id          String        @id @default(uuid())
-  type        SchoolType
-  setup       SchoolSetup
-  schoolName  String        @unique
-  address     String
-  phoneNumber String
-  createdBy   String?
-  approvedBy  String?
-  isApproved  Boolean
-  status      SchoolStatus
-  email       String        @unique
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  staffs      Staffs[]
-  students    Students[]
-  admins      Admins[]
-  groupId     String?
-  group       SchoolGroups? @relation(fields: [groupId], references: [id])
+  id              String        @id @default(uuid())
+  type            SchoolType
+  setup           SchoolSetup
+  schoolName      String        @unique
+  address         String
+  phoneNumber     String
+  country         String
+  state           String
+  createdBy       String?
+  approvedBy      String?
+  isApproved      Boolean
+  termsConditions Boolean
+  status          SchoolStatus
+  email           String        @unique
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  staffs          Staffs[]
+  students        Students[]
+  admins          Admins[]
+  groupId         String?
+  group           SchoolGroups? @relation(fields: [groupId], references: [id])
 }
 
 model Staffs {

@@ -5,10 +5,15 @@ import {
   Staffs,
   SchoolSetup,
   Students,
+  SchoolStatus,
   Schools,
   SchoolGroups,
+  Role,
 } from '../generated/browser.js';
-import { SchoolDataInput } from '../middleware/zodvalidate/schema/school/schoolSchemas.js';
+import {
+  SchoolDataInput,
+  GroupDataInput,
+} from '../middleware/zodvalidate/schema/school/schoolSchemas.js';
 import { UserDataInput } from '../middleware/zodvalidate/schema/user/userSchema.js';
 
 export interface UserToRelation {
@@ -107,4 +112,25 @@ export interface ReturnResponse<T = any> {
   success: boolean;
   message: string;
   data?: T;
+}
+
+type SchoolDataInputWithStatus = SchoolDataInput & {
+  isApproved: boolean;
+  status: SchoolStatus;
+};
+
+type GroupDataInputWithStatus = GroupDataInput & {
+  status: SchoolStatus;
+};
+
+type AdminDataInputWithStatus = UserDataInput & {
+  isVerified: boolean;
+  status: SchoolStatus;
+  role: Role;
+};
+
+export interface SignupPayload {
+  schoolData: SchoolDataInputWithStatus;
+  groupData: GroupDataInputWithStatus;
+  adminData: AdminDataInputWithStatus;
 }
