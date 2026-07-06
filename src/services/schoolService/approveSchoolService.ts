@@ -28,7 +28,7 @@ export const approveSchoolService = async (
     ? await findUniqueSchool('schoolGroups', 'id', data.groupId)
     : null;
 
-  if (!findSchoolGroup) {
+  if (findSchool.schools.setup === 'GROUP' && !findSchoolGroup) {
     const error = { success: false, message: 'Group unavailable.' };
     return error;
   }
