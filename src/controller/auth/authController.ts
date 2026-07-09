@@ -70,9 +70,9 @@ export const login = async (
   if (validPassword) {
     //   To-Do: unsign previous token when a new token is generated
     const token = await sign({ [relationKey]: userRelation.id });
-    res
-      .status(200)
-      .send(new SuccessResponse('Access granted', { token, user: userQuery[query.table] }));
+    const userObj = { ...userQuery[query.table] };
+    delete (userObj as Partial<Users>).password;
+    res.status(200).send(new SuccessResponse('Access granted', { token, user: userObj }));
     return;
   }
 
