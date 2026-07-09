@@ -6,4 +6,6 @@ import { loggedInUser } from '../../controller/user/userController.js';
 
 const router = Router();
 
-router.get('/user/me', authJwtAndRole([Role.SUPERADMIN]), catchAsync(loggedInUser));
+router.get('/me', authJwtAndRole(Object.values(Role) as Role[]), catchAsync(loggedInUser));
+
+export default router;
