@@ -9,9 +9,9 @@ import { globalErrorHandler } from './middleware/errorHandler/globalErrorHandler
 const app = express();
 const PORT = process.env.SERVER_PORT;
 
-import danira from './routes/danira/daniraRouter.js';
+import daniraRoute from './routes/danira/daniraRouter.js';
 import authRouter from './routes/auth/authRouter.js';
-import userRouter from './routes/auth/authRouter.js';
+import userRouter from './routes/user/userRouter.js';
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -19,7 +19,7 @@ app.use(cors());
 
 app.use(pinoHttp({ logger }));
 
-app.use('/danira', danira);
+app.use('/danira', daniraRoute);
 
 app.use('/user', userRouter);
 
