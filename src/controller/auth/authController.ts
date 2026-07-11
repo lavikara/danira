@@ -6,7 +6,7 @@ import { SuccessResponse, ApiError } from '../../utils/apiResponse.js';
 import { Users } from '../../generated/browser.js';
 import { getRelationKey } from '../../utils/helpers.js';
 import { forgotPasswordMail } from '../../services/emailServices/emailService.js';
-import { updateUserPassword } from '../../services/dbServices/usersTable.js';
+import { updateUserPassword } from '../../services/userService/updatePassword.js';
 import { findUniqueUser } from '../../services/dbServices/dbServices.js';
 import { RelationKeys, ReturnResponse } from '../../types/definitions.js';
 import { schoolCreatedBySignupMail } from '../../services/emailServices/emailService.js';
@@ -16,6 +16,27 @@ import {
   ResetPasswordInput,
   ForgotPasswordInput,
 } from '../../middleware/zodvalidate/schema/auth/authSchemas.js';
+
+export const verifyToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const error = new ApiError(401, 'Unauthorised');
+    return next(error);
+  }
+  const token = authHeader.split(' ')[1];
+  const verifiedJwt = (await verify(token)) as Record<string, unknown>;
+  const relationKey: RelationKeys | undefined = getRelationKey(verifiedJwt);
+
+  if (!relationKey) {
+    const error = new ApiError(401, 'Unauthorised');
+    return next(error);
+  }
+  res.status(200).send(new SuccessResponse('Valid token', {}));
+};
 
 /**
  *    Login logic for all type of users
@@ -76,7 +97,8 @@ export const login = async (
     return;
   }
 
-  throw new Error('Internal logic error');
+  const error = new ApiError(500, 'Internal logic error');
+  return next(error);
 };
 
 /**
@@ -124,7 +146,9 @@ export const resetPassword = async (
     res.status(200).send(new SuccessResponse('Password updated', updated));
     return;
   }
-  throw new Error('Internal logic error');
+
+  const error = new ApiError(500, 'Failed to update password');
+  return next(error);
 };
 
 /**
@@ -170,7 +194,9 @@ export const forgotPassword = async (
     res.status(200).send(new SuccessResponse('Reset link sent to email', {}));
     return;
   }
-  throw new Error('Internal logic error');
+
+  const error = new ApiError(500, 'Internal logic error');
+  return next(error);
 };
 
 /**
