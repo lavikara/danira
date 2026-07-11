@@ -59,6 +59,7 @@ async function clearDatabase(): Promise<void> {
   await prismaClient.terms.deleteMany();
   await prismaClient.gradeYears.deleteMany();
   await prismaClient.staffs.deleteMany();
+  await prismaClient.departments.deleteMany();
   await prismaClient.admins.deleteMany();
   await prismaClient.schools.deleteMany();
   await prismaClient.schoolGroups.deleteMany();
@@ -129,17 +130,33 @@ async function main(): Promise<void> {
     }),
   );
 
-  // ── 3. SCHOOL GROUPS (2) — each has its own groupId ──────────────────────
+  // ── 3. SCHOOL GROUPS (10) — each has its own groupId ─────────────────────
+  //   groupA/groupB actually own schools (below); the rest exist as
+  //   standalone trusts with no schools yet, a perfectly valid real-world
+  //   state for a SchoolGroups row.
   console.log('🏫  Seeding SchoolGroups …');
 
-  const groupA = await prismaClient.schoolGroups.create({
-    data: { groupName: 'Sunrise Educational Group', status: 'APPROVED' },
-  });
-  const groupB = await prismaClient.schoolGroups.create({
-    data: { groupName: 'Horizon Learning Network', status: 'APPROVED' },
-  });
+  const schoolGroupDefs: Array<[string, 'APPROVED' | 'PENDING' | 'BLOCKED']> = [
+    ['Sunrise Educational Group', 'APPROVED'],
+    ['Horizon Learning Network', 'APPROVED'],
+    ['Meridian Group of Schools', 'PENDING'],
+    ['Bright Horizons Trust', 'PENDING'],
+    ['Legacy Education Network', 'BLOCKED'],
+    ['Pinnacle Trust Schools', 'PENDING'],
+    ['Cedar Education Alliance', 'APPROVED'],
+    ['Riverside Learning Collective', 'PENDING'],
+    ['Apex Academy Group', 'APPROVED'],
+    ['Solstice Schools Network', 'PENDING'],
+  ];
 
-  // ── 4. SCHOOLS (12) ──────────────────────────────────────────────────────
+  const schoolGroups = await Promise.all(
+    schoolGroupDefs.map(([groupName, status]) =>
+      prismaClient.schoolGroups.create({ data: { groupName, status } }),
+    ),
+  );
+  const [groupA, groupB] = schoolGroups;
+
+  // ── 4. SCHOOLS (10) ──────────────────────────────────────────────────────
   //   2 under groupA  |  2 under groupB  |  6 standalone (SINGLE, no group)
   console.log('🏛️   Seeding Schools …');
 
@@ -234,26 +251,72 @@ async function main(): Promise<void> {
 
   const groupASchools = schools.filter((s) => s.groupId === groupA.id);
   const groupBSchools = schools.filter((s) => s.groupId === groupB.id);
+  const schoolTypeById = new Map(schools.map((s) => [s.id, s.type]));
 
-  // ── 5. ADMINS + USERS ────────────────────────────────────────────────────
+  // ── 5. DEPARTMENTS (46) ──────────────────────────────────────────────────
+  //   Primary schools only ever have age/stage-based departments:
+  //     Creche, Preschool, Junior, Advance                      (4 each)
+  //   Secondary/tertiary schools have subject-area departments:
+  //     Sciences, Humanities, Business, Language, Mathematics   (5 each)
+  //   4 primary schools × 4  +  6 non-primary schools × 5  =  46 rows.
+  //   headId is deliberately left unset here — it's patched in once Staffs
+  //   exist (see step 9), since Departments.headId ↔ Staffs.departmentId
+  //   is a circular relationship.
+  console.log('🏢  Seeding Departments …');
+
+  const PRIMARY_DEPARTMENT_NAMES = ['Creche', 'Preschool', 'Junior', 'Advance'] as const;
+  const NON_PRIMARY_DEPARTMENT_NAMES = [
+    'Sciences',
+    'Humanities',
+    'Business',
+    'Language',
+    'Mathematics',
+  ] as const;
+
+  const departments = (
+    await Promise.all(
+      schools.map((school) => {
+        const deptNames =
+          school.type === SchoolType.PRIMARY
+            ? PRIMARY_DEPARTMENT_NAMES
+            : NON_PRIMARY_DEPARTMENT_NAMES;
+        return Promise.all(
+          deptNames.map((name) =>
+            prismaClient.departments.create({
+              data: {
+                name,
+                code: name.slice(0, 3).toUpperCase(),
+                description: `${name} department at ${school.schoolName}`,
+                status: 'ACTIVE',
+                schoolId: school.id,
+              },
+            }),
+          ),
+        );
+      }),
+    )
+  ).flat();
+
+  // ── 6. ADMINS + USERS ────────────────────────────────────────────────────
   //
-  //   • 1  SUPERADMIN         — one danira super admin
+  //   • 1  SUPERADMIN        — kuku@yopmail.com
+  //   • 1  DANIRAADMIN       — platform-level admin
   //   • 2  GROUPSCHOOLADMIN  — one per group, each manages all schools in
   //                            that group (m2m `schools` connect + denormalised
   //                            `schoolIds` array for quick lookups)
-  //   • 12 SCHOOLADMIN       — one dedicated admin per school
+  //   • 10 SCHOOLADMIN       — one dedicated admin per school
   //
   console.log('👤  Seeding Admins …');
 
-  // 5a. Super admin — Danira Platform
+  // 6a. Super admin — temikara@yopmail.com
   const superAdmin = await prismaClient.users.create({
     data: {
-      username: 'super_temikara',
+      username: 'super_temi',
       email: yop('temikara'),
       password,
       status: 'ACTIVE',
-      firstName: 'Temitayo',
-      lastName: 'Kara',
+      firstName: 'Temi',
+      lastName: 'Admin',
       country: 'Nigeria',
       state: 'Lagos',
       isVerified: true,
@@ -273,7 +336,7 @@ async function main(): Promise<void> {
     },
   });
 
-  // 5a. Danira admin — Danira Platform
+  // 6b. Danira admin — Danira Platform
   const daniraAdmin = await prismaClient.users.create({
     data: {
       username: 'danira_omolayo',
@@ -285,9 +348,9 @@ async function main(): Promise<void> {
       country: 'Nigeria',
       state: 'Lagos',
       isVerified: false,
-      phoneNumber: phone(201),
+      phoneNumber: phone(202),
       address: '44, Igbo Olomu Close, Agric, Ikorodu, Lagos.',
-      gender: Gender.MALE,
+      gender: Gender.FEMALE,
       role: Role.DANIRAADMIN,
     },
   });
@@ -301,7 +364,7 @@ async function main(): Promise<void> {
     },
   });
 
-  // 5a. Group admin — Sunrise Educational Group
+  // 6c. Group admin — Sunrise Educational Group
   const guserA = await prismaClient.users.create({
     data: {
       username: 'ngozi.eze.groupadmin',
@@ -313,7 +376,7 @@ async function main(): Promise<void> {
       country: 'Nigeria',
       state: 'Lagos',
       isVerified: false,
-      phoneNumber: phone(201),
+      phoneNumber: phone(203),
       address: '12 Sunrise Avenue, Jos, Plateau State',
       gender: Gender.FEMALE,
       role: Role.GROUPSCHOOLADMIN,
@@ -329,7 +392,7 @@ async function main(): Promise<void> {
     },
   });
 
-  // 5b. Group admin — Horizon Learning Network
+  // 6d. Group admin — Horizon Learning Network
   const guserB = await prismaClient.users.create({
     data: {
       username: 'tunde.bakare.groupadmin',
@@ -341,7 +404,7 @@ async function main(): Promise<void> {
       country: 'Nigeria',
       state: 'Lagos',
       isVerified: false,
-      phoneNumber: phone(202),
+      phoneNumber: phone(204),
       address: '5 Horizon Close, Abuja, FCT',
       gender: Gender.MALE,
       role: Role.GROUPSCHOOLADMIN,
@@ -357,7 +420,7 @@ async function main(): Promise<void> {
     },
   });
 
-  // 5c. One SCHOOLADMIN per school (10 admins)
+  // 6e. One SCHOOLADMIN per school (10 admins)
   const schoolAdminNames: Array<[string, string, Gender]> = [
     ['Amaka', 'Okafor', Gender.FEMALE],
     ['Chidi', 'Yusuf', Gender.MALE],
@@ -404,8 +467,10 @@ async function main(): Promise<void> {
     }),
   );
 
-  // ── 6. SUBJECTS (12) ─────────────────────────────────────────────────────
-  // Created before Staffs so we can connect staff→subjects in the same pass.
+  // ── 7. SUBJECTS (12) ─────────────────────────────────────────────────────
+  //   Each subject is placed under one specific school's instance of a
+  //   subject-area department (Sciences / Humanities / Business / Language /
+  //   Mathematics — the categories that only exist on non-primary schools).
   console.log('📚  Seeding Subjects …');
 
   const subjectDefs = [
@@ -413,83 +478,99 @@ async function main(): Promise<void> {
       name: 'Mathematics',
       code: 'MTH101',
       description: 'Number theory, algebra, and geometry.',
+      category: 'Mathematics',
     },
     {
       name: 'English Language',
       code: 'ENG101',
       description: 'Grammar, comprehension, and composition.',
+      category: 'Language',
     },
     {
       name: 'Basic Science',
       code: 'BSC101',
       description: 'Introductory physical and life sciences.',
+      category: 'Sciences',
     },
     {
       name: 'Social Studies',
       code: 'SOS101',
       description: 'Civics, history, and geography.',
+      category: 'Humanities',
     },
     {
       name: 'Physics',
       code: 'PHY201',
       description: 'Mechanics, waves, and electromagnetism.',
+      category: 'Sciences',
     },
     {
       name: 'Chemistry',
       code: 'CHM201',
       description: 'Organic and inorganic chemistry.',
+      category: 'Sciences',
     },
     {
       name: 'Biology',
       code: 'BIO201',
       description: 'Cell biology, genetics, and ecology.',
+      category: 'Sciences',
     },
     {
       name: 'Computer Studies',
       code: 'CMP101',
       description: 'Programming fundamentals and ICT literacy.',
+      category: 'Sciences',
     },
     {
       name: 'Economics',
       code: 'ECO201',
       description: 'Micro and macroeconomics for secondary school.',
+      category: 'Business',
     },
     {
       name: 'Civic Education',
       code: 'CIV101',
       description: 'Citizenship, rights, and responsibilities.',
+      category: 'Humanities',
     },
     {
       name: 'Agricultural Sci.',
       code: 'AGR101',
       description: 'Crop science, livestock, and farm management.',
+      category: 'Sciences',
     },
     {
       name: 'Fine Arts',
       code: 'ART101',
       description: 'Drawing, painting, and art history.',
+      category: 'Humanities',
     },
-  ];
+  ] as const;
 
   const subjects = await Promise.all(
-    subjectDefs.map((s) =>
-      prismaClient.subjects.create({
+    subjectDefs.map((s, i) => {
+      const matchingDepartments = departments.filter((d) => d.name === s.category);
+      const department = matchingDepartments[i % matchingDepartments.length];
+      return prismaClient.subjects.create({
         data: {
           name: s.name,
           code: s.code,
           status: 'ACTIVE',
           description: s.description,
+          departmentId: department.id,
         },
-      }),
-    ),
+      });
+    }),
   );
 
-  // ── 7. STAFFS + USERS (14) ───────────────────────────────────────────────
+  // ── 8. STAFFS + USERS (46) ───────────────────────────────────────────────
   //
-  //   14 staff members distributed across all 12 schools.
-  //   Each staff is connected to one subject so that every subject (12)
-  //   gets at least one teacher (staff[i % 12] covers all 12 subjects;
-  //   staff[12] and staff[13] simply share subjects[0] and subjects[1]).
+  //   Exactly one staff member per department (46 staff ↔ 46 departments),
+  //   which guarantees every department — including the Creche/Preschool/
+  //   Junior/Advance departments at primary schools — has a staff member to
+  //   draw a head from in step 9. Each staff at a subject-area department
+  //   is also connected to one subject so every subject (12) gets a teacher.
   //
   console.log('👩‍🏫  Seeding Staffs …');
 
@@ -508,6 +589,38 @@ async function main(): Promise<void> {
     ['Rasheed', 'Lar', Gender.MALE],
     ['Sandra', 'Madaki', Gender.FEMALE],
     ['Titus', 'Nuhu', Gender.MALE],
+    ['Uche', 'Okon', Gender.MALE],
+    ['Victoria', 'Paul', Gender.FEMALE],
+    ['Yakubu', 'Suleiman', Gender.MALE],
+    ['Zainab', 'Tanko', Gender.FEMALE],
+    ['Abel', 'Umoh', Gender.MALE],
+    ['Blessing', 'Yohanna', Gender.FEMALE],
+    ['Adaeze', 'Abiodun', Gender.FEMALE],
+    ['Bayo', 'Bitrus', Gender.MALE],
+    ['Chiamaka', 'Chukwudi', Gender.FEMALE],
+    ['Dapo', 'Dawodu', Gender.MALE],
+    ['Eno', 'Ekong', Gender.FEMALE],
+    ['Fadila', 'Fagbenle', Gender.FEMALE],
+    ['Gbenga', 'Garba', Gender.MALE],
+    ['Halima', 'Hamza', Gender.FEMALE],
+    ['Ikenna', 'Ike', Gender.MALE],
+    ['Jibola', 'Jimoh', Gender.MALE],
+    ['Kosi', 'Kalejaiye', Gender.FEMALE],
+    ['Labaran', 'Lawal', Gender.MALE],
+    ['Mmesoma', 'Musa', Gender.FEMALE],
+    ['Ndidi', 'Nnaji', Gender.FEMALE],
+    ['Oche', 'Okonkwo', Gender.MALE],
+    ['Precious', 'Pwajok', Gender.FEMALE],
+    ['Rita', 'Quadri', Gender.FEMALE],
+    ['Sefiya', 'Raji', Gender.FEMALE],
+    ['Tobi', 'Sanni', Gender.MALE],
+    ['Umar', 'Tanimu', Gender.MALE],
+    ['Vivian', 'Ugo', Gender.FEMALE],
+    ['Wale', 'Vincent', Gender.MALE],
+    ['Xolani', 'Waziri', Gender.MALE],
+    ['Yemi', 'Yila', Gender.FEMALE],
+    ['Zubaida', 'Zango', Gender.FEMALE],
+    ['Chinwe', 'Bassey', Gender.FEMALE],
   ];
 
   const positions = [
@@ -517,12 +630,16 @@ async function main(): Promise<void> {
     'Senior Teacher',
     'Lab Coordinator',
     'Vice Principal',
+    'Caregiver',
+    'Early Years Coordinator',
   ];
-  const departments = ['Sciences', 'Humanities', 'Languages', 'Arts', 'Technology'];
+
+  const subjectCategoryNames: string[] = [...NON_PRIMARY_DEPARTMENT_NAMES];
 
   const staffs = await Promise.all(
     staffDefs.map(async ([firstName, lastName, gender], i) => {
       const username = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.staff`;
+      const department = departments[i]; // 1:1 — every department gets exactly one staff here
       const user = await prismaClient.users.create({
         data: {
           username: `${username}${i + 1}`,
@@ -535,16 +652,20 @@ async function main(): Promise<void> {
           state: 'Lagos',
           isVerified: false,
           phoneNumber: phone(400 + i),
-          address: `Staff Block ${i + 1}, ${schools[i % schools.length].schoolName}`,
+          address: `Staff Block ${i + 1}, ${department.name} Department`,
           gender,
           role: Role.SCHOOLSTAFF,
         },
       });
+
+      // Only staff in a subject-area department (non-primary schools) teach
+      // one of the 12 subjects; Creche/Preschool/Junior/Advance staff don't.
+      const teachesSubjects = subjectCategoryNames.includes(department.name);
+
       return prismaClient.staffs.create({
         data: {
           userId: user.id,
-          position: positions[i % positions.length],
-          depertment: departments[i % departments.length],
+          position: teachesSubjects ? positions[i % 6] : positions[6 + (i % 2)],
           accomodation:
             i % 3 === 0 ? Accomodation.STAFFQUARTERS : i % 3 === 1 ? Accomodation.ONCAMPUS : null,
           employmentStatus:
@@ -553,18 +674,44 @@ async function main(): Promise<void> {
               : i % 3 === 1
                 ? StaffStatus.PERTIME
                 : StaffStatus.VISITING,
-          schoolId: schools[i % schools.length].id,
-          // Every subject gets a teacher: subjects[0..11] covered by staff[0..11];
-          // staff[12] and [13] share subjects[0] and [1] as co-teachers.
-          subjects: { connect: [{ id: subjects[i % subjects.length].id }] },
+          schoolId: department.schoolId,
+          departmentId: department.id,
+          subjects: teachesSubjects
+            ? { connect: [{ id: subjects[i % subjects.length].id }] }
+            : undefined,
         },
       });
     }),
   );
 
-  // ── 8. CLASSES (12) ──────────────────────────────────────────────────────
-  //   Every class has a supervisor drawn from the staffs pool.
+  // ── 9. ASSIGN DEPARTMENT HEADS ───────────────────────────────────────────
+  //   Patched in now that Staffs exist. The 1:1 staff↔department pairing
+  //   from step 8 means every one of the 46 departments gets a head.
+  console.log('🎓  Assigning Department heads …');
+
+  await Promise.all(
+    departments.map((department) => {
+      const head = staffs.find((s) => s.departmentId === department.id);
+      if (!head) return Promise.resolve();
+      return prismaClient.departments.update({
+        where: { id: department.id },
+        data: { headId: head.id },
+      });
+    }),
+  );
+
+  // ── 10. CLASSES (12) ─────────────────────────────────────────────────────
+  //   Every class has a supervisor drawn from the staffs pool, and inherits
+  //   that supervisor's department. Primary-level classes (the first 4 defs)
+  //   are supervised by staff at primary-type schools (Creche/Preschool/
+  //   Junior/Advance); secondary & tertiary classes are supervised by staff
+  //   at subject-area departments.
   console.log('🏫  Seeding Classes …');
+
+  const primaryStaffs = staffs.filter((s) => schoolTypeById.get(s.schoolId) === SchoolType.PRIMARY);
+  const nonPrimaryStaffs = staffs.filter(
+    (s) => schoolTypeById.get(s.schoolId) !== SchoolType.PRIMARY,
+  );
 
   const classDefs = [
     { name: 'Primary 1A', type: ClassType.PRIMARY },
@@ -582,22 +729,27 @@ async function main(): Promise<void> {
   ];
 
   const classes = await Promise.all(
-    classDefs.map((def, i) =>
-      prismaClient.classes.create({
+    classDefs.map((def, i) => {
+      const supervisor =
+        i < 4
+          ? primaryStaffs[i % primaryStaffs.length]
+          : nonPrimaryStaffs[(i - 4) % nonPrimaryStaffs.length];
+      return prismaClient.classes.create({
         data: {
           name: def.name,
           type: def.type,
           status: 'ACTIVE',
           description: `${def.name} — current academic session.`,
           population: 25 + (i % 10),
-          supervisorId: staffs[i % staffs.length].id,
+          supervisorId: supervisor.id,
           gradeYearId: gradeYears[i % gradeYears.length].id,
+          departmentId: supervisor.departmentId,
         },
-      }),
-    ),
+      });
+    }),
   );
 
-  // ── 9. EXAMS (10) ────────────────────────────────────────────────────────
+  // ── 11. EXAMS (10) ───────────────────────────────────────────────────────
   console.log('📝  Seeding Exams …');
 
   const exams = await Promise.all(
@@ -613,7 +765,7 @@ async function main(): Promise<void> {
     ),
   );
 
-  // ── 10. TESTS (10) ───────────────────────────────────────────────────────
+  // ── 12. TESTS (10) ────────────────────────────────────────────────────────
   console.log('📋  Seeding Tests …');
 
   const tests = await Promise.all(
@@ -629,7 +781,7 @@ async function main(): Promise<void> {
     ),
   );
 
-  // ── 11. ASSIGNMENTS (10) ─────────────────────────────────────────────────
+  // ── 13. ASSIGNMENTS (10) ──────────────────────────────────────────────────
   console.log('📄  Seeding Assignments …');
 
   const assignments = await Promise.all(
@@ -645,7 +797,7 @@ async function main(): Promise<void> {
     ),
   );
 
-  // ── 12. LESSONS (12) ─────────────────────────────────────────────────────
+  // ── 14. LESSONS (12) ─────────────────────────────────────────────────────
   //   Each lesson needs: subject, class, and a staff member (teacher).
   //   We also link to an assignment to satisfy the optional FK.
   console.log('🗓️   Seeding Lessons …');
@@ -664,14 +816,14 @@ async function main(): Promise<void> {
           endTime: new Date(2026, 0, 5, 9 + (i % 6), 0, 0),
           subjectId: subjects[i % subjects.length].id,
           classId: classes[i % classes.length].id,
-          staffId: staffs[i % staffs.length].id,
+          staffId: nonPrimaryStaffs[i % nonPrimaryStaffs.length].id,
           assignmentId: assignments[i % assignments.length].id,
         },
       }),
     ),
   );
 
-  // ── 13. GUARDIANS + USERS (10) ───────────────────────────────────────────
+  // ── 15. GUARDIANS + USERS (10) ────────────────────────────────────────────
   console.log('👨‍👩‍👧  Seeding Guardians …');
 
   const guardianDefs: Array<[string, string, Gender]> = [
@@ -711,7 +863,7 @@ async function main(): Promise<void> {
     }),
   );
 
-  // ── 14. STUDENTS + USERS (14) ────────────────────────────────────────────
+  // ── 16. STUDENTS + USERS (14) ─────────────────────────────────────────────
   //
   //   Guardian distribution (demonstrates "a guardian can have multiple
   //   students"):
@@ -719,6 +871,7 @@ async function main(): Promise<void> {
   //     guardians[1] (Benjamin) → students 3, 4, 5   (3 students)
   //     guardians[2..9]         → students 6..13      (1 each)
   //
+  //   Each student's departmentId is inherited from their assigned class.
   console.log('🎒  Seeding Students …');
 
   const studentDefs: Array<[string, string, Gender]> = [
@@ -759,6 +912,7 @@ async function main(): Promise<void> {
   const students = await Promise.all(
     studentDefs.map(async ([firstName, lastName, gender], i) => {
       const username = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.student`;
+      const cls = classes[i % classes.length];
       const user = await prismaClient.users.create({
         data: {
           username: `${username}${i + 1}`,
@@ -780,7 +934,7 @@ async function main(): Promise<void> {
         data: {
           userId: user.id,
           accomodation: i % 3 === 0 ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
-          classId: classes[i % classes.length].id,
+          classId: cls.id,
           guardianId: guardians[guardianMap[i]].id,
           schoolId: schools[i % schools.length].id,
           gradeYearId: gradeYears[i % gradeYears.length].id,
@@ -788,12 +942,13 @@ async function main(): Promise<void> {
           testId: tests[i % tests.length].id,
           assignmentId: assignments[i % assignments.length].id,
           subjectId: subjects[i % subjects.length].id,
+          departmentId: cls.departmentId,
         },
       });
     }),
   );
 
-  // ── 15. ATTENDANCE (14) ──────────────────────────────────────────────────
+  // ── 17. ATTENDANCE (14) ───────────────────────────────────────────────────
   //   One record per student, linked to the lesson for that student's class.
   console.log('✅  Seeding Attendance …');
 
@@ -811,7 +966,7 @@ async function main(): Promise<void> {
     ),
   );
 
-  // ── 16. REPORT CARDS (14) ────────────────────────────────────────────────
+  // ── 18. REPORT CARDS (14) ─────────────────────────────────────────────────
   //   One card per student; each card is linked to a subject.
   console.log('📊  Seeding ReportCards …');
 
@@ -833,7 +988,7 @@ async function main(): Promise<void> {
     ),
   );
 
-  // ── 17. FEES (14) ────────────────────────────────────────────────────────
+  // ── 19. FEES (14) ─────────────────────────────────────────────────────────
   console.log('💰  Seeding Fees …');
 
   const feeTypes = [
@@ -859,7 +1014,7 @@ async function main(): Promise<void> {
     }),
   );
 
-  // ── 18. EVENTS (10) ──────────────────────────────────────────────────────
+  // ── 20. EVENTS (10) ───────────────────────────────────────────────────────
   console.log('🎉  Seeding Events …');
 
   const eventDefs = [
@@ -890,7 +1045,7 @@ async function main(): Promise<void> {
     ),
   );
 
-  // ── 19. ANNOUNCEMENTS (10) ───────────────────────────────────────────────
+  // ── 21. ANNOUNCEMENTS (10) ────────────────────────────────────────────────
   console.log('📢  Seeding Announcements …');
 
   const announcementDefs = [
@@ -926,12 +1081,13 @@ async function main(): Promise<void> {
 
   Table               Records
   ─────────────────── ───────
-  SchoolGroups             2
+  SchoolGroups            ${schoolGroups.length}
   Schools                 ${schools.length}
-  Admins                  ${schools.length + 2}  (10 school + 2 group)
-  Staffs                  ${staffs.length}
+  Departments             ${departments.length}  (4 per primary school, 5 per secondary/tertiary; every one has a head)
+  Admins                  14  (1 super + 1 danira + 2 group + 10 school)
+  Staffs                  ${staffs.length}  (1:1 with departments)
   Classes                 ${classes.length}
-  Subjects                ${subjects.length}
+  Subjects                ${subjects.length}  (all connected to staff + department)
   GradeYears              ${gradeYears.length}
   Terms                   ${terms.length}
   Exams                   ${exams.length}
@@ -945,6 +1101,8 @@ async function main(): Promise<void> {
   Fees                    ${students.length}
   Events                  10
   Announcements           10
+
+  Super admin login: kuku@yopmail.com / Password123!
   `);
 }
 
