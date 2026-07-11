@@ -72,8 +72,29 @@ model Schools {
   staffs          Staffs[]
   students        Students[]
   admins          Admins[]
+  departments     Departments[]
   groupId         String?
   group           SchoolGroups? @relation(fields: [groupId], references: [id])
+}
+
+model Departments {
+  id          String           @id @default(uuid())
+  name        String
+  code        String?
+  description String?
+  status      DepartmentStatus @default(ACTIVE)
+  schoolId    String
+  school      Schools          @relation(fields: [schoolId], references: [id])
+  headId      String?          @unique
+  head        Staffs?          @relation("DepartmentHead", fields: [headId], references: [id])
+  staffs      Staffs[]         @relation("DepartmentStaffs")
+  subjects    Subjects[]
+  classes     Classes[]
+  students    Students[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([schoolId, name])
 }
 
 model Staffs {
@@ -81,15 +102,17 @@ model Staffs {
   userId           String        @unique
   position         String
   image            String?
-  depertment       String?
   accomodation     Accomodation?
   employmentStatus StaffStatus
   subjects         Subjects[]
   classes          Classes[]
   lessons          Lessons[]
-  schoolId         String?
-  school           Schools?      @relation(fields: [schoolId], references: [id])
+  schoolId         String
+  school           Schools       @relation(fields: [schoolId], references: [id])
   users            Users         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  departmentId     String?
+  department       Departments?  @relation("DepartmentStaffs", fields: [departmentId], references: [id])
+  headOfDepartment Departments?  @relation("DepartmentHead")
 }
 
 model Students {
@@ -99,22 +122,24 @@ model Students {
   attendances  Attendance[]
   reportCard   ReportCards[]
   fees         Fees[]
-  classId      Int
+  classId      String
   class        Classes       @relation(fields: [classId], references: [id])
   guardianId   String
   guardian     Guardians     @relation(fields: [guardianId], references: [id])
   schoolId     String?
   school       Schools?      @relation(fields: [schoolId], references: [id])
-  gradeYearId  Int?
+  gradeYearId  String?
   gradeYear    GradeYears?   @relation(fields: [gradeYearId], references: [id])
-  examId       Int?
+  examId       String?
   exam         Exams?        @relation(fields: [examId], references: [id])
-  testId       Int?
+  testId       String?
   test         Tests?        @relation(fields: [testId], references: [id])
-  assignmentId Int?
+  assignmentId String?
   assignment   Assignments?  @relation(fields: [assignmentId], references: [id])
-  subjectId    Int?
+  subjectId    String?
   subject      Subjects?     @relation(fields: [subjectId], references: [id])
+  departmentId String?
+  department   Departments?  @relation(fields: [departmentId], references: [id])
   userId       String        @unique
   users        Users         @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -127,7 +152,7 @@ model Guardians {
 }
 
 model Classes {
-  id            Int             @id @default(autoincrement())
+  id            String          @id @default(uuid())
   name          String
   type          ClassType
   status        ClassCondition
@@ -141,12 +166,14 @@ model Classes {
   students      Students[]
   events        Events[]
   announcements Announcements[]
-  gradeYearId   Int?
+  gradeYearId   String?
   gradeYear     GradeYears?     @relation(fields: [gradeYearId], references: [id])
+  departmentId  String?
+  department    Departments?    @relation(fields: [departmentId], references: [id])
 }
 
 model Assignments {
-  id        Int        @id @default(autoincrement())
+  id        String     @id @default(uuid())
   title     String
   startTime DateTime
   dueDate   DateTime
@@ -158,7 +185,7 @@ model Assignments {
 }
 
 model Exams {
-  id        Int        @id @default(autoincrement())
+  id        String     @id @default(uuid())
   title     String
   status    Duration
   startTime DateTime
@@ -170,7 +197,7 @@ model Exams {
 }
 
 model Tests {
-  id        Int        @id @default(autoincrement())
+  id        String     @id @default(uuid())
   title     String
   status    Duration
   startTime DateTime
@@ -182,7 +209,7 @@ model Tests {
 }
 
 model GradeYears {
-  id        Int        @id @default(autoincrement())
+  id        String     @id @default(uuid())
   level     String
   start     DateTime
   end       DateTime
@@ -194,7 +221,7 @@ model GradeYears {
 }
 
 model Terms {
-  id          Int         @id @default(autoincrement())
+  id          String      @id @default(uuid())
   name        String
   start       DateTime
   end         DateTime
@@ -202,12 +229,12 @@ model Terms {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   type        TermType
-  gradeYearId Int?
+  gradeYearId String?
   gradeYear   GradeYears? @relation(fields: [gradeYearId], references: [id])
 }
 
 model Attendance {
-  id         Int              @id @default(autoincrement())
+  id         String           @id @default(uuid())
   date       DateTime
   attendance AttendanceStatus
   status     Duration
@@ -215,12 +242,12 @@ model Attendance {
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
   student    Students         @relation(fields: [studentId], references: [id])
-  lessonId   Int?
+  lessonId   String?
   lesson     Lessons?         @relation(fields: [lessonId], references: [id])
 }
 
 model Subjects {
-  id           Int           @id @default(autoincrement())
+  id           String        @id @default(uuid())
   name         String        @unique
   description  String?
   code         String?
@@ -230,16 +257,18 @@ model Subjects {
   staffs       Staffs[]
   lessons      Lessons[]
   students     Students[]
-  examId       Int?
+  examId       String?
   exam         Exams?        @relation(fields: [examId], references: [id])
-  testId       Int?
+  testId       String?
   test         Tests?        @relation(fields: [testId], references: [id])
-  reportCardId Int?
+  reportCardId String?
   reportCard   ReportCards?  @relation(fields: [reportCardId], references: [id])
+  departmentId String?
+  department   Departments?  @relation(fields: [departmentId], references: [id])
 }
 
 model Lessons {
-  id           Int          @id @default(autoincrement())
+  id           String       @id @default(uuid())
   name         String       @unique
   description  String?
   day          Day
@@ -250,17 +279,17 @@ model Lessons {
   updatedAt    DateTime     @updatedAt
   attendances  Attendance[]
   subject      Subjects     @relation(fields: [subjectId], references: [id])
-  subjectId    Int
+  subjectId    String
   class        Classes      @relation(fields: [classId], references: [id])
-  classId      Int
+  classId      String
   staff        Staffs       @relation(fields: [staffId], references: [id])
   staffId      String
-  assignmentId Int?
+  assignmentId String?
   assignment   Assignments? @relation(fields: [assignmentId], references: [id])
 }
 
 model ReportCards {
-  id              Int             @id @default(autoincrement())
+  id              String          @id @default(uuid())
   testScore       Float
   assignmentScore Float
   examScore       Float
@@ -289,7 +318,7 @@ model Fees {
 }
 
 model Events {
-  id          Int      @id @default(autoincrement())
+  id          String   @id @default(uuid())
   title       String
   description String?
   status      Duration
@@ -298,17 +327,17 @@ model Events {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   class       Classes? @relation(fields: [classId], references: [id])
-  classId     Int?
+  classId     String?
 }
 
 model Announcements {
-  id          Int                @id @default(autoincrement())
+  id          String             @id @default(uuid())
   title       String
   description String?
   status      AnnouncementStatus
   date        DateTime
   class       Classes?           @relation(fields: [classId], references: [id])
-  classId     Int?
+  classId     String?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 }
@@ -437,4 +466,9 @@ enum TermType {
   FIRSTTERM
   SECONDTERM
   THIRDTERM
+}
+
+enum DepartmentStatus {
+  ACTIVE
+  INACTIVE
 }
