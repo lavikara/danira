@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Prisma } from '../../generated/client.js';
+import jwt from 'jsonwebtoken';
 import { ZodError } from 'zod';
 import { ApiError } from '../../utils/apiResponse.js';
 import { ApiResponse } from '../../types/definitions.js';
@@ -15,6 +16,10 @@ export const globalErrorHandler = (
   res: Response,
   next: NextFunction,
 ): void => {
+  if (res.headersSent) {
+    return;
+  }
+
   let statusCode = 500;
   let message = 'Internal Server Error';
 
@@ -34,6 +39,15 @@ export const globalErrorHandler = (
   } else if (err instanceof ApiError) {
     statusCode = err.statusCode;
     message = err.message;
+  } else if (err instanceof jwt.TokenExpiredError) {
+    statusCode = 401;
+    message = 'Token expired';
+  } else if (err instanceof jwt.JsonWebTokenError) {
+    statusCode = 401;
+    message = 'Invalid token';
+  } else if (err instanceof jwt.NotBeforeError) {
+    statusCode = 401;
+    message = 'Token not active yet';
   } else if (err instanceof Error) {
     message = err.message;
   }
