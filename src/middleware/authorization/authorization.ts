@@ -10,6 +10,7 @@ declare global {
   namespace Express {
     interface Request {
       userId?: string;
+      userKey?: RelationKeys;
       userRole?: string;
     }
   }
@@ -39,6 +40,7 @@ export const authJwtAndRole = (authorizedRoles: Role[]) => {
     }
 
     req.userId = userId;
+    req.userKey = relationKey;
 
     const query = {
       table: relationKey,
