@@ -26,6 +26,12 @@ export interface UserToRelation {
   };
 }
 
+export interface AdminToUser {
+  admins: Admins & {
+    users?: Users;
+  };
+}
+
 export interface UniqueSchoolData {
   schools: Schools;
   schoolGroups?: SchoolGroups;
@@ -91,6 +97,7 @@ export type IncludeQuery = {
   staffs?: boolean;
   guardians?: boolean;
   users?: boolean;
+  schools?: boolean;
 };
 
 export type OmitQuery = {
@@ -106,6 +113,13 @@ export type TableColumnObject = {
 export interface FindFirst {
   table: RelationKeys;
   column: TableColumnObject[];
+}
+
+export interface FindMany {
+  table: RelationKeys;
+  where: TableColumn;
+  whereValue: string[];
+  include?: IncludeQuery;
 }
 
 export interface ReturnResponse<T = any> {

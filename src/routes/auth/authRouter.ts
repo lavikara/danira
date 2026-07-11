@@ -12,9 +12,12 @@ import {
   login,
   resetPassword,
   forgotPassword,
+  verifyToken,
 } from '../../controller/auth/authController.js';
 
 const router = Router();
+
+router.get('/verify', catchAsync(verifyToken));
 
 /**
  *    This route handles login for all type of user

@@ -4,7 +4,9 @@ import {
   IncludeQuery,
   OmitQuery,
   payloadType,
+  AdminToUser,
   FindFirst,
+  FindMany,
   TableColumn,
   UserToRelation,
   UniqueSchoolData,
@@ -16,7 +18,7 @@ export const findUniqueUser = async (
   whereValue: string,
   include?: IncludeQuery,
   omit?: OmitQuery,
-): Promise<UserToRelation | null> => {
+): Promise<(UserToRelation & AdminToUser) | null> => {
   const user = await prismaClient[table].findUnique({
     where: { [where]: whereValue } as any,
     include: include as IncludeQuery,
@@ -30,7 +32,7 @@ export const findUniqueUser = async (
       delete (user as any)[relKey];
     }
   }
-  return { [table]: user } as unknown as UserToRelation | null;
+  return { [table]: user } as unknown as (UserToRelation & AdminToUser) | null;
 };
 
 export const findUniqueSchool = async (
@@ -57,6 +59,13 @@ export const findFirst = async (query: FindFirst) => {
 
   return await prismaClient[query.table].findFirst({
     where: whereClause as any,
+  });
+};
+
+export const findMany = async (query: FindMany) => {
+  return await prismaClient[query.table].findMany({
+    where: { [query.where]: { in: query.whereValue } },
+    include: query.include as IncludeQuery,
   });
 };
 

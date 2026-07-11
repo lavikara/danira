@@ -1,4 +1,4 @@
-import { prismaClient } from './dbClient/prismaClient.js';
+import { prismaClient } from '../dbServices/dbClient/prismaClient.js';
 import { UserToRelation } from '../../types/definitions.js';
 
 /**
