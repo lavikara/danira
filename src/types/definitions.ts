@@ -148,3 +148,64 @@ export interface SignupPayload {
   groupData: GroupDataInputWithStatus;
   adminData: AdminDataInputWithStatus;
 }
+
+export interface PaginationQuery {
+  page: number;
+  limit: number;
+  skip: number;
+  sortBy?: string | undefined;
+  order: 'asc' | 'desc';
+  search?: string | undefined;
+}
+
+export interface PaginatedDbQuery {
+  where: Record<string, any>;
+  page: number;
+  limit: number;
+  orderBy: Record<string, any>;
+  include: {
+    users: { omit: { password: boolean } };
+    school: boolean;
+    department: boolean;
+    headOfDepartment: boolean;
+  };
+}
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  meta: PaginationMeta;
+  success: boolean;
+  timestamp: string;
+  message: string;
+}
+
+export interface Paginatable<T> {
+  findMany: (args: any) => Promise<T[]>;
+  count: (args: any) => Promise<number>;
+}
+
+export interface PaginateOptions {
+  where?: Record<string, any>;
+  orderBy?: Record<string, 'asc' | 'desc'> | Record<string, 'asc' | 'desc'>[];
+  select?: Record<string, any>;
+  include?: Record<string, any>;
+  page: number;
+  limit: number;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      pagination: PaginationQuery;
+    }
+  }
+}
