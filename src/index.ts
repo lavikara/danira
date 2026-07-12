@@ -13,6 +13,7 @@ import daniraRoute from './routes/danira/daniraRouter.js';
 import authRouter from './routes/auth/authRouter.js';
 import userRouter from './routes/user/userRouter.js';
 import schoolRouter from './routes/school/schoolRouter.js';
+import staffRouter from './routes/staff/staffRouter.js';
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -25,6 +26,8 @@ app.use('/danira', daniraRoute);
 app.use('/user', userRouter);
 
 app.use('/school', schoolRouter);
+
+app.use('/staff', staffRouter);
 
 app.use('/auth', authRouter);
 

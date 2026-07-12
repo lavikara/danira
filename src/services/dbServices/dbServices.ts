@@ -1,4 +1,5 @@
 import { prismaClient } from './dbClient/prismaClient.js';
+import { paginate } from '../../utils/paginate.js';
 import {
   RelationKeys,
   IncludeQuery,
@@ -7,10 +8,19 @@ import {
   AdminToUser,
   FindFirst,
   FindMany,
+  PaginatedDbQuery,
   TableColumn,
   UserToRelation,
   UniqueSchoolData,
 } from '../../types/definitions.js';
+
+export const paginatedResource = async (
+  table: RelationKeys,
+  query: PaginatedDbQuery,
+  message: string,
+) => {
+  return await paginate(prismaClient[table], query, message);
+};
 
 export const findUniqueUser = async (
   table: RelationKeys,
