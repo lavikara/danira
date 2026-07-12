@@ -163,11 +163,11 @@ export interface PaginatedDbQuery {
   page: number;
   limit: number;
   orderBy: Record<string, any>;
-  include: {
-    users: { omit: { password: boolean } };
-    school: boolean;
-    department: boolean;
-    headOfDepartment: boolean;
+  include?: {
+    users?: { omit: { password: boolean } };
+    school?: boolean;
+    department?: boolean;
+    headOfDepartment?: boolean;
   };
 }
 
