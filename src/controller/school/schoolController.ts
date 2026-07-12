@@ -1,7 +1,6 @@
 import { type Request, type Response, type NextFunction } from 'express';
-import { verify } from '../../services/jwtService/jwtService.js';
 import { SuccessResponse, ApiError } from '../../utils/apiResponse.js';
-import { findUniqueUser, findUniqueSchool } from '../../services/dbServices/dbServices.js';
+import { findUniqueUser } from '../../services/dbServices/dbServices.js';
 import { groupSchools, groupDetails } from '../../services/schoolService/group.js';
 import { schoolDetails } from '../../services/schoolService/singleSchool.js';
 import { RelationKeys } from '../../types/definitions.js';
