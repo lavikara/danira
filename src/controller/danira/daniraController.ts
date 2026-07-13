@@ -7,7 +7,7 @@ import {
 import { sign } from '../../services/jwtService/jwtService.js';
 import { SuccessResponse, ApiError } from '../../utils/apiResponse.js';
 import { ReturnResponse } from '../../types/definitions.js';
-import { daniraSchoolSignup } from '../../services/schoolService/createSchool.js';
+import { daniraSchoolSignup } from '../../services/schoolService/createSchoolService.js';
 import { approveSchoolService } from '../../services/schoolService/approveSchoolService.js';
 
 /**

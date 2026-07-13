@@ -1,8 +1,8 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import { SuccessResponse, ApiError } from '../../utils/apiResponse.js';
 import { findUniqueUser } from '../../services/dbServices/dbServices.js';
-import { groupSchools, groupDetails } from '../../services/schoolService/group.js';
-import { schoolDetails } from '../../services/schoolService/singleSchool.js';
+import { groupSchools, groupDetails } from '../../services/schoolService/groupSchoolService.js';
+import { schoolDetails } from '../../services/schoolService/singleSchoolService.js';
 import { RelationKeys } from '../../types/definitions.js';
 
 export const getSingleSchoolDetails = async (
