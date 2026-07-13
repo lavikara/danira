@@ -149,6 +149,19 @@ export interface SignupPayload {
   adminData: AdminDataInputWithStatus;
 }
 
+interface BarChartDataset {
+  label: string;
+  data: number[];
+  backgroundColor?: string | string[];
+  borderColor?: string | string[];
+  borderWidth?: number;
+}
+
+export interface ChartJsBarData {
+  labels: string[];
+  datasets: BarChartDataset[];
+}
+
 export interface PaginationQuery {
   page: number;
   limit: number;
