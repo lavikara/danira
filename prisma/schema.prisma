@@ -23,6 +23,7 @@ model Users {
   gender      Gender
   role        Role
   status      UserCondition
+  ratings     Float         @default(0)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   admins      Admins?
@@ -101,6 +102,7 @@ model Staffs {
   id               String        @id @default(uuid())
   userId           String        @unique
   position         String
+  staffNumber      String?
   image            String?
   accomodation     Accomodation?
   employmentStatus StaffStatus
@@ -116,33 +118,32 @@ model Staffs {
 }
 
 model Students {
-  id            String        @id @default(uuid())
-  studentNumber String?
-  image         String?
-  accomodation  Accomodation?
-  attendances   Attendance[]
-  reportCard    ReportCards[]
-  fees          Fees[]
-  classId       String
-  class         Classes       @relation(fields: [classId], references: [id])
-  guardianId    String
-  guardian      Guardians     @relation(fields: [guardianId], references: [id])
-  schoolId      String?
-  school        Schools?      @relation(fields: [schoolId], references: [id])
-  gradeYearId   String?
-  gradeYear     GradeYears?   @relation(fields: [gradeYearId], references: [id])
-  examId        String?
-  exam          Exams?        @relation(fields: [examId], references: [id])
-  testId        String?
-  test          Tests?        @relation(fields: [testId], references: [id])
-  assignmentId  String?
-  assignment    Assignments?  @relation(fields: [assignmentId], references: [id])
-  subjectId     String?
-  subject       Subjects?     @relation(fields: [subjectId], references: [id])
-  departmentId  String?
-  department    Departments?  @relation(fields: [departmentId], references: [id])
-  userId        String        @unique
-  users         Users         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String        @id @default(uuid())
+  image        String?
+  accomodation Accomodation?
+  attendances  Attendance[]
+  reportCard   ReportCards[]
+  fees         Fees[]
+  classId      String
+  class        Classes       @relation(fields: [classId], references: [id])
+  guardianId   String
+  guardian     Guardians     @relation(fields: [guardianId], references: [id])
+  schoolId     String?
+  school       Schools?      @relation(fields: [schoolId], references: [id])
+  gradeYearId  String?
+  gradeYear    GradeYears?   @relation(fields: [gradeYearId], references: [id])
+  examId       String?
+  exam         Exams?        @relation(fields: [examId], references: [id])
+  testId       String?
+  test         Tests?        @relation(fields: [testId], references: [id])
+  assignmentId String?
+  assignment   Assignments?  @relation(fields: [assignmentId], references: [id])
+  subjectId    String?
+  subject      Subjects?     @relation(fields: [subjectId], references: [id])
+  departmentId String?
+  department   Departments?  @relation(fields: [departmentId], references: [id])
+  userId       String        @unique
+  users        Users         @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Guardians {
