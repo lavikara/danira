@@ -1,17 +1,46 @@
 import { Router } from 'express';
 import { catchAsync } from '../../utils/catchAsync.js';
-import { authJwtAndRole } from '../../middleware/authorization/authorization.js';
+import { roleAuthorization } from '../../middleware/authorization/roleAuthorization.js';
+import { userAuthorization } from '../../middleware/authorization/userAuthorization.js';
 import { pagination } from '../../middleware/pagination/pagination.js';
 import { Role } from '../../generated/browser.js';
-import { allStaffs } from '../../controller/staff/staffController.js';
+import {
+  allSingleSchoolStaffs,
+  allGroupSchoolStaffs,
+  singleSchoolStaffAnalytics,
+  groupSchoolStaffAnalytics,
+} from '../../controller/staff/staffController.js';
 
 const router = Router();
 
 router.get(
-  '/all',
-  authJwtAndRole(Object.values(Role) as Role[]),
+  '/:schoolId/all',
+  userAuthorization,
+  roleAuthorization([Role.SCHOOLADMIN, Role.SUBSCHOOLADMIN, Role.GROUPSCHOOLADMIN]),
   pagination,
-  catchAsync(allStaffs),
+  catchAsync(allSingleSchoolStaffs),
+);
+
+router.get(
+  '/:schoolId/analytics',
+  userAuthorization,
+  roleAuthorization([Role.SCHOOLADMIN, Role.SUBSCHOOLADMIN, Role.GROUPSCHOOLADMIN]),
+  catchAsync(singleSchoolStaffAnalytics),
+);
+
+router.get(
+  '/:groupId/all-group',
+  userAuthorization,
+  roleAuthorization([Role.GROUPSCHOOLADMIN]),
+  pagination,
+  catchAsync(allGroupSchoolStaffs),
+);
+
+router.get(
+  '/:groupId/analytics',
+  userAuthorization,
+  roleAuthorization([Role.GROUPSCHOOLADMIN]),
+  catchAsync(groupSchoolStaffAnalytics),
 );
 
 export default router;

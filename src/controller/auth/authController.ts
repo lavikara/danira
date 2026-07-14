@@ -6,11 +6,11 @@ import { SuccessResponse, ApiError } from '../../utils/apiResponse.js';
 import { Users } from '../../generated/browser.js';
 import { getRelationKey } from '../../utils/helpers.js';
 import { forgotPasswordMail } from '../../services/emailServices/emailService.js';
-import { updateUserPassword } from '../../services/userService/updatePassword.js';
+import { updateUserPassword } from '../../services/authService/updatePasswordService.js';
 import { findUniqueUser } from '../../services/dbServices/dbServices.js';
 import { RelationKeys, ReturnResponse } from '../../types/definitions.js';
 import { schoolCreatedBySignupMail } from '../../services/emailServices/emailService.js';
-import { userSchoolSignup } from '../../services/schoolService/createSchool.js';
+import { userSchoolSignup } from '../../services/schoolService/createSchoolService.js';
 import {
   LoginInput,
   ResetPasswordInput,

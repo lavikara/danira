@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { catchAsync } from '../../utils/catchAsync.js';
-import { authJwtAndRole } from '../../middleware/authorization/authorization.js';
+import { roleAuthorization } from '../../middleware/authorization/roleAuthorization.js';
+import { userAuthorization } from '../../middleware/authorization/userAuthorization.js';
+import { pagination } from '../../middleware/pagination/pagination.js';
 import { Role } from '../../generated/browser.js';
 import {
   getSingleSchoolDetails,
@@ -11,8 +13,9 @@ import {
 const router = Router();
 
 router.get(
-  '/single-school',
-  authJwtAndRole([
+  '/:schoolId/single-school',
+  userAuthorization,
+  roleAuthorization([
     Role.SCHOOLADMIN,
     Role.GROUPSCHOOLADMIN,
     Role.SUBSCHOOLADMIN,
@@ -22,8 +25,19 @@ router.get(
   catchAsync(getSingleSchoolDetails),
 );
 
-router.get('/group-schools', authJwtAndRole([Role.GROUPSCHOOLADMIN]), catchAsync(getGroupSchools));
+router.get(
+  '/:groupId/group-schools',
+  userAuthorization,
+  roleAuthorization([Role.GROUPSCHOOLADMIN]),
+  pagination,
+  catchAsync(getGroupSchools),
+);
 
-router.get('/group-details', authJwtAndRole([Role.GROUPSCHOOLADMIN]), catchAsync(getGroupDetails));
+router.get(
+  '/:groupId/group-details',
+  userAuthorization,
+  roleAuthorization([Role.GROUPSCHOOLADMIN]),
+  catchAsync(getGroupDetails),
+);
 
 export default router;

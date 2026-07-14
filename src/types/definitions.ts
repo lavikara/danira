@@ -36,6 +36,7 @@ export interface UniqueSchoolData {
   schools: Schools;
   schoolGroups?: SchoolGroups;
   users?: Users;
+  admins?: Admins;
 }
 
 export interface SchoolAdminData {
@@ -149,6 +150,19 @@ export interface SignupPayload {
   adminData: AdminDataInputWithStatus;
 }
 
+interface BarChartDataset {
+  label: string;
+  data: number[];
+  backgroundColor?: string | string[];
+  borderColor?: string | string[];
+  borderWidth?: number;
+}
+
+export interface ChartJsBarData {
+  labels: string[];
+  datasets: BarChartDataset[];
+}
+
 export interface PaginationQuery {
   page: number;
   limit: number;
@@ -205,6 +219,11 @@ export interface PaginateOptions {
 declare global {
   namespace Express {
     interface Request {
+      userId?: string;
+      userKey?: RelationKeys;
+      userRole?: string;
+      groupId?: string;
+      schoolIds?: string[];
       pagination: PaginationQuery;
     }
   }
