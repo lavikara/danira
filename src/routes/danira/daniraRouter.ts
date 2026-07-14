@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { catchAsync } from '../../utils/catchAsync.js';
 import { validate } from '../../middleware/zodvalidate/validate.js';
-import { authJwtAndRole } from '../../middleware/authorization/authorization.js';
+import { roleAuthorization } from '../../middleware/authorization/roleAuthorization.js';
+import { userAuthorization } from '../../middleware/authorization/userAuthorization.js';
 import { Role } from '../../generated/browser.js';
 import {
   signupSchoolSchema,
@@ -16,14 +17,16 @@ const router = Router();
  */
 router.post(
   '/signup-school',
-  authJwtAndRole([Role.SUPERADMIN]),
+  userAuthorization,
+  roleAuthorization([Role.SUPERADMIN]),
   validate({ body: signupSchoolSchema }),
   catchAsync(schoolSignup),
 );
 
 router.post(
   '/approve-school',
-  authJwtAndRole([Role.SUPERADMIN]),
+  userAuthorization,
+  roleAuthorization([Role.SUPERADMIN]),
   validate({ body: approveOrInvalidateSchoolSchema }),
   approveSchool,
 );
