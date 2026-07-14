@@ -102,7 +102,6 @@ model Staffs {
   id               String        @id @default(uuid())
   userId           String        @unique
   position         String
-  staffNumber      String?
   image            String?
   accomodation     Accomodation?
   employmentStatus StaffStatus
@@ -138,8 +137,7 @@ model Students {
   test         Tests?        @relation(fields: [testId], references: [id])
   assignmentId String?
   assignment   Assignments?  @relation(fields: [assignmentId], references: [id])
-  subjectId    String?
-  subject      Subjects?     @relation(fields: [subjectId], references: [id])
+  subjects     Subjects[]
   departmentId String?
   department   Departments?  @relation(fields: [departmentId], references: [id])
   userId       String        @unique
