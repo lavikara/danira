@@ -36,6 +36,7 @@ export interface UniqueSchoolData {
   schools: Schools;
   schoolGroups?: SchoolGroups;
   users?: Users;
+  admins?: Admins;
 }
 
 export interface SchoolAdminData {
@@ -218,6 +219,11 @@ export interface PaginateOptions {
 declare global {
   namespace Express {
     interface Request {
+      userId?: string;
+      userKey?: RelationKeys;
+      userRole?: string;
+      groupId?: string;
+      schoolIds?: string[];
       pagination: PaginationQuery;
     }
   }
