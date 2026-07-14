@@ -1,9 +1,4 @@
 import { prismaClient } from '../dbServices/dbClient/prismaClient.js';
-import { ChartJsBarData } from '../../types/definitions.js';
-import { toBarChartData } from '../../utils/analytics.js';
-import { ApproveOrInvalidateSchoolInput } from '../../middleware/zodvalidate/schema/school/schoolSchemas.js';
-import { ReturnResponse } from '../../types/definitions.js';
-import { findUniqueSchool, findUniqueUser } from '../dbServices/dbServices.js';
 
 interface TeacherWorkload {
   staffId: string;
