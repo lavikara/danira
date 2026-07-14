@@ -1,36 +1,20 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import { SuccessResponse, ApiError } from '../../utils/apiResponse.js';
-import { findUniqueUser } from '../../services/dbServices/dbServices.js';
-import { groupSchools, groupDetails } from '../../services/schoolService/groupSchoolService.js';
+import { groupDetails } from '../../services/schoolService/groupSchoolService.js';
+import { createSortWhitelist } from '../../middleware/pagination/pagination.js';
+import { paginatedResource } from '../../services/dbServices/dbServices.js';
 import { schoolDetails } from '../../services/schoolService/singleSchoolService.js';
-import { RelationKeys } from '../../types/definitions.js';
+
+const SCHOOLS_SORTABLE_FIELDS = ['email', 'schoolName'] as const;
+const resolveSort = createSortWhitelist(SCHOOLS_SORTABLE_FIELDS, 'schoolName');
 
 export const getSingleSchoolDetails = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
-  const userKey = req.userKey;
-  const userId = req.userId;
-  const userQuery = await findUniqueUser(userKey as RelationKeys, 'id', userId as string, {
-    users: true,
-  });
-
-  const permission = [
-    'GROUPSCHOOLADMIN',
-    'SCHOOLADMIN',
-    'SUBSCHOOLADMIN',
-    'SCHOOLSTAFF',
-    'STUDENT',
-  ];
-  if (!permission.includes(userQuery?.admins.users?.role as string)) {
-    const error = new ApiError(401, 'Unauthorised');
-    next(error);
-    return;
-  }
-  const schoolId = userQuery?.admins.schoolIds as [];
-
-  const details = await schoolDetails(schoolId);
+  const schoolId = req.params.schoolId;
+  const details = await schoolDetails(schoolId as string);
   if (!details?.success) {
     const error = new ApiError(404, details?.message);
     next(error);
@@ -51,17 +35,7 @@ export const getGroupDetails = async (
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
-  const userKey = req.userKey;
-  const userId = req.userId;
-  const userQuery = await findUniqueUser(userKey as RelationKeys, 'id', userId as string, {
-    users: true,
-  });
-  if (userQuery?.admins.users?.role !== 'GROUPSCHOOLADMIN') {
-    const error = new ApiError(401, 'Unauthorised');
-    next(error);
-    return;
-  }
-  const groupId = userQuery.admins.groupId;
+  const groupId = req.params.groupId;
 
   const details = await groupDetails(groupId as string);
   if (!details?.success) {
@@ -80,18 +54,33 @@ export const getGroupDetails = async (
 };
 
 export const getGroupSchools = async (req: Request, res: Response, next: NextFunction) => {
-  const userKey = req.userKey;
-  const userId = req.userId;
-  const userQuery = await findUniqueUser(userKey as RelationKeys, 'id', userId as string, {
-    users: true,
-  });
-  if (userQuery?.admins.users?.role !== 'GROUPSCHOOLADMIN') {
-    const error = new ApiError(401, 'Unauthorised');
-    next(error);
-    return;
+  const groupId = req.params.groupId;
+
+  const groupschoolDetails = await groupDetails(groupId as string);
+  const schoolIds = groupschoolDetails.data?.schoolGroups.admins[0].schoolIds as string[];
+  const { page, limit, sortBy, order, search } = req.pagination;
+
+  const { schoolName, email } = req.query;
+  const where: Record<string, any> = {};
+
+  if (schoolIds) where.id = { in: schoolIds };
+  if (schoolIds && schoolName) where.schoolName = schoolName;
+  if (schoolIds && email) where.schoolName = schoolName;
+
+  if (search) {
+    where.OR = [
+      { schoolName: { contains: search, mode: 'insensitive' } },
+      { email: { contains: search, mode: 'insensitive' } },
+    ];
   }
-  const schoolIds = userQuery?.admins.schoolIds as [];
-  const details = await groupSchools(schoolIds);
+  const query = {
+    where,
+    page,
+    limit,
+    orderBy: { [resolveSort(sortBy)]: order },
+  };
+
+  const details = await paginatedResource('schools', query, 'All group schools fetched');
   if (!details?.success) {
     const error = new ApiError(404, details?.message);
     next(error);
@@ -99,7 +88,7 @@ export const getGroupSchools = async (req: Request, res: Response, next: NextFun
   }
 
   if (details?.success) {
-    res.status(200).send(new SuccessResponse(details?.message, details?.data));
+    res.json(details);
     return;
   }
 
