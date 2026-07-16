@@ -9,9 +9,9 @@ const STAFFS_SORTABLE_FIELDS = ['employmentStatus', 'position'] as const;
 const resolveSort = createSortWhitelist(STAFFS_SORTABLE_FIELDS, 'position');
 
 export const allSingleSchoolStaffs = async (req: Request, res: Response, next: NextFunction) => {
+  const { schoolId } = req.params;
   const { page, limit, sortBy, order, search } = req.pagination;
 
-  const { schoolId } = req.params;
   const { departmentId, employmentStatus, accomodation } = req.query;
   const where: Record<string, any> = {};
 
@@ -42,7 +42,11 @@ export const allSingleSchoolStaffs = async (req: Request, res: Response, next: N
     orderBy: { [resolveSort(sortBy)]: order },
     include: {
       users: { omit: { password: true } },
-      subjects: true,
+      subjects: { select: { name: true } },
+      _count: {
+        select: { lessons: true },
+      },
+      department: { select: { name: true } },
     },
   };
 
@@ -58,20 +62,58 @@ export const allSingleSchoolStaffs = async (req: Request, res: Response, next: N
   }
 };
 
+export const singleSchoolStaffAnalytics = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { schoolId } = req.params;
+  console.log(schoolId);
+
+  const staffWhere: Record<string, any> = {};
+  if (schoolId) staffWhere.schoolId = schoolId;
+
+  const staffUserWhere: Record<string, any> = { staffs: { schoolId } };
+
+  const [totalStaffs, activeStaffs, staffsOnLeave, ratingAgg, topTeachers] = await getAnalyticsData(
+    staffWhere,
+    staffUserWhere,
+    schoolId as string,
+  );
+
+  const chartItems = topTeachers.map((teacher) => ({
+    label: [teacher.firstName, teacher.lastName].filter(Boolean).join(' ') || teacher.staffId,
+    value: teacher.studentCount,
+  }));
+
+  const topTeachersChart: ChartJsBarData = toBarChartData(chartItems, 'Students Taught');
+  const timestamp = new Date().toISOString();
+
+  res.json({
+    totalStaffs,
+    activeStaffs,
+    staffsOnLeave,
+    averageRating: Number((ratingAgg._avg.ratings ?? 0).toFixed(2)),
+    topTeachersByWorkload: {
+      chart: topTeachersChart,
+      raw: topTeachers,
+    },
+    timestamp,
+    success: true,
+    message: 'Staff analytics fetched.',
+  });
+};
+
 export const allGroupSchoolStaffs = async (req: Request, res: Response, next: NextFunction) => {
   const { groupId } = req.params;
   const { page, limit, sortBy, order, search } = req.pagination;
 
-  // Optional narrowing filters within the group, e.g.
-  // /api/school-groups/:groupId/staffs?schoolId=...&employmentStatus=FULLTIME
   const { schoolId, departmentId, employmentStatus, accomodation } = req.query;
 
   const where: Record<string, any> = {
     school: { groupId },
   };
 
-  // schoolId here further narrows to one school within the group —
-  // still validated to actually belong to the group via the AND below.
   if (schoolId) {
     where.AND = [{ schoolId }];
   }
@@ -101,7 +143,11 @@ export const allGroupSchoolStaffs = async (req: Request, res: Response, next: Ne
     orderBy: { [resolveSort(sortBy)]: order },
     include: {
       users: { omit: { password: true } },
-      subjects: true,
+      subjects: { select: { name: true } },
+      _count: {
+        select: { lessons: true },
+      },
+      department: { select: { name: true } },
     },
   };
   const result = await paginatedResource('staffs', query, 'Fetched all group staffs');
@@ -111,31 +157,38 @@ export const allGroupSchoolStaffs = async (req: Request, res: Response, next: Ne
   }
 
   if (result.success) {
-    res.json(result);
+    const normalizedData = (result.data as Array<Record<string, any>>).map((staff) => {
+      const { _count, ...rest } = staff;
+      return {
+        ...rest,
+        lessonCount: _count?.lessons ?? 0,
+      };
+    });
+
+    res.json({
+      ...result,
+      data: normalizedData,
+    });
     return;
   }
 };
 
-export const singleSchoolStaffAnalytics = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  const { schoolId } = req.query;
+export const groupStaffAnalytics = async (req: Request, res: Response, next: NextFunction) => {
+  const { groupId } = req.params;
 
   const staffWhere: Record<string, any> = {};
-  if (schoolId) staffWhere.schoolId = schoolId;
+  const staffUserWhere: Record<string, any> = {};
 
-  // Users whose only tie to being "staff" is the 1:1 Staffs relation —
-  // scoped by schoolId through that relation when provided.
-  const staffUserWhere: Record<string, any> = schoolId
-    ? { staffs: { schoolId } }
-    : { staffs: { isNot: null } };
+  if (groupId) {
+    staffWhere.school = { group: { id: groupId } };
+    staffUserWhere.staffs = { school: { group: { id: groupId } } };
+  }
 
   const [totalStaffs, activeStaffs, staffsOnLeave, ratingAgg, topTeachers] = await getAnalyticsData(
     staffWhere,
     staffUserWhere,
-    schoolId as string,
+    groupId as string,
+    'group',
   );
 
   const chartItems = topTeachers.map((teacher) => ({
@@ -144,6 +197,7 @@ export const singleSchoolStaffAnalytics = async (
   }));
 
   const topTeachersChart: ChartJsBarData = toBarChartData(chartItems, 'Students Taught');
+  const timestamp = new Date().toISOString();
 
   res.json({
     totalStaffs,
@@ -151,16 +205,11 @@ export const singleSchoolStaffAnalytics = async (
     staffsOnLeave,
     averageRating: Number((ratingAgg._avg.ratings ?? 0).toFixed(2)),
     topTeachersByWorkload: {
-      // Drop straight into <Bar data={topTeachersByWorkload.chart} />
       chart: topTeachersChart,
-      // Full rows too, for a table, tooltips, or linking to a staff profile.
       raw: topTeachers,
     },
+    timestamp,
+    success: true,
+    message: 'Staff analytics fetched.',
   });
 };
-
-export const groupSchoolStaffAnalytics = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {};
