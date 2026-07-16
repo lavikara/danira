@@ -248,7 +248,7 @@ model Attendance {
 
 model Subjects {
   id           String        @id @default(uuid())
-  name         String        @unique
+  name         String
   description  String?
   code         String?
   createdAt    DateTime      @default(now())
