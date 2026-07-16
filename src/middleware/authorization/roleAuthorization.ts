@@ -6,9 +6,11 @@ export const roleAuthorization = (authorizedRoles: Role[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     const userRole = req.userRole;
     const isAuthorized = userRole ? authorizedRoles.includes(userRole as Role) : false;
-    if (isAuthorized) return next();
+    if (!isAuthorized) {
+      const error = new ApiError(401, 'Unauthorised');
+      return next(error);
+    }
 
-    const error = new ApiError(401, 'Unauthorised');
-    return next(error);
+    return next();
   };
 };
