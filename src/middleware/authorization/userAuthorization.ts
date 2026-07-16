@@ -20,7 +20,7 @@ export const userAuthorization = async (req: Request, res: Response, next: NextF
     return next(error);
   }
 
-  const userId = verifiedJwt[relationKey] as string | undefined;
+  const userId = verifiedJwt[relationKey] as string;
 
   if (!userId) {
     const error = new ApiError(401, 'Unauthorised');
