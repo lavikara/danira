@@ -119,7 +119,7 @@ export interface FindFirst {
 export interface FindMany {
   table: RelationKeys;
   where: TableColumn;
-  whereValue: string[];
+  whereArray: string[];
   include?: IncludeQuery;
 }
 

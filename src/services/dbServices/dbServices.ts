@@ -74,7 +74,7 @@ export const findFirst = async (query: FindFirst) => {
 
 export const findMany = async (query: FindMany) => {
   return await prismaClient[query.table].findMany({
-    where: { [query.where]: { in: query.whereValue } },
+    where: { [query.where]: { in: query.whereArray } },
     include: query.include as IncludeQuery,
   });
 };
