@@ -68,7 +68,6 @@ export const singleSchoolStaffAnalytics = async (
   next: NextFunction,
 ) => {
   const { schoolId } = req.params;
-  console.log(schoolId);
 
   const staffWhere: Record<string, any> = {};
   if (schoolId) staffWhere.schoolId = schoolId;
@@ -78,7 +77,8 @@ export const singleSchoolStaffAnalytics = async (
   const [totalStaffs, activeStaffs, staffsOnLeave, ratingAgg, topTeachers] = await getAnalyticsData(
     staffWhere,
     staffUserWhere,
-    schoolId as string,
+    schoolId as string[],
+    'school',
   );
 
   const chartItems = topTeachers.map((teacher) => ({
@@ -179,6 +179,8 @@ export const groupStaffAnalytics = async (req: Request, res: Response, next: Nex
   const staffWhere: Record<string, any> = {};
   const staffUserWhere: Record<string, any> = {};
 
+  const schoolIds = req.schoolIds as string[];
+
   if (groupId) {
     staffWhere.school = { group: { id: groupId } };
     staffUserWhere.staffs = { school: { group: { id: groupId } } };
@@ -187,7 +189,7 @@ export const groupStaffAnalytics = async (req: Request, res: Response, next: Nex
   const [totalStaffs, activeStaffs, staffsOnLeave, ratingAgg, topTeachers] = await getAnalyticsData(
     staffWhere,
     staffUserWhere,
-    groupId as string,
+    schoolIds,
     'group',
   );
 
