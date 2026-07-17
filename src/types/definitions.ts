@@ -155,7 +155,7 @@ interface BarChartDataset {
   data: number[];
   backgroundColor?: string | string[];
   borderColor?: string | string[];
-  borderWidth?: number;
+  borderRadius?: number;
 }
 
 export interface ChartJsBarData {
@@ -180,7 +180,7 @@ export interface PaginatedDbQuery {
   include?: {
     users?: { omit: { password: boolean } };
     school?: boolean;
-    department?: boolean;
+    department?: { select: { name: boolean } };
     headOfDepartment?: boolean;
   };
 }

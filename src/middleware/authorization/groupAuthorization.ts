@@ -2,8 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../../utils/apiResponse.js';
 
 export const groupAuthorization = (req: Request, res: Response, next: NextFunction) => {
-  console.log(req);
-  console.log(req.params.groupId);
   const groupId = req.params.groupId;
   const isAuthorized = groupId ? groupId === req.groupId : false;
   if (!isAuthorized) {

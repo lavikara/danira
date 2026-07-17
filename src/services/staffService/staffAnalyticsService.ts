@@ -12,7 +12,8 @@ interface TeacherWorkload {
 export async function getAnalyticsData(
   staffWhere: Record<string, any>,
   staffUserWhere: Record<string, any>,
-  schoolId: string | undefined,
+  schoolId: string[],
+  scopeType: 'school' | 'group',
 ): Promise<[number, number, number, { _avg: { ratings: number | null } }, TeacherWorkload[]]> {
   return await Promise.all([
     prismaClient.staffs.count({ where: staffWhere }),
@@ -26,7 +27,7 @@ export async function getAnalyticsData(
       where: staffUserWhere,
       _avg: { ratings: true },
     }),
-    getTopTeachersByWorkload(schoolId as string | undefined),
+    getTopTeachersByWorkload(schoolId, scopeType),
   ]);
 }
 
@@ -41,12 +42,17 @@ export async function getAnalyticsData(
  * Everything else is combined in memory.
  */
 
-async function getTopTeachersByWorkload(schoolId?: string): Promise<TeacherWorkload[]> {
+async function getTopTeachersByWorkload(
+  scopeId?: string[],
+  scopeType: 'school' | 'group' = 'school',
+): Promise<TeacherWorkload[]> {
   const lessonWhere: Record<string, any> = {};
-  if (schoolId) lessonWhere.staff = { schoolId };
+  if (scopeType === 'group' && scopeId) {
+    lessonWhere.staff = { school: { id: { in: scopeId } } };
+  } else if (scopeId) {
+    lessonWhere.staff = { schoolId: scopeId };
+  }
 
-  // distinct() ensures a teacher who teaches the same class across
-  // multiple subjects/lessons only has that class's students counted once.
   const distinctPairs = await prismaClient.lessons.findMany({
     where: lessonWhere,
     select: { staffId: true, classId: true },
@@ -90,8 +96,6 @@ async function getTopTeachersByWorkload(schoolId?: string): Promise<TeacherWorkl
 
   const detailsById = new Map(staffDetails.map((s) => [s.id, s]));
 
-  // Re-sort against topStaffIds to preserve workload order — findMany's
-  // `in` filter does not guarantee it matches the input array's order.
   return topStaffIds.map((staffId) => {
     const detail = detailsById.get(staffId);
     return {

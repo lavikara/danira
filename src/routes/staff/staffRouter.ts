@@ -10,7 +10,7 @@ import {
   allSingleSchoolStaffs,
   allGroupSchoolStaffs,
   singleSchoolStaffAnalytics,
-  groupSchoolStaffAnalytics,
+  groupStaffAnalytics,
 } from '../../controller/staff/staffController.js';
 
 const router = Router();
@@ -42,11 +42,11 @@ router.get(
 );
 
 router.get(
-  '/:groupId/analytics',
+  '/:groupId/analytics-group',
   userAuthorization,
   roleAuthorization([Role.GROUPSCHOOLADMIN]),
   groupAuthorization,
-  catchAsync(groupSchoolStaffAnalytics),
+  catchAsync(groupStaffAnalytics),
 );
 
 export default router;

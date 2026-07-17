@@ -10,9 +10,19 @@ export function toBarChartData(
       {
         label: datasetLabel,
         data: items.map((item) => item.value),
-        backgroundColor: 'rgba(59, 130, 246, 0.6)',
-        borderColor: 'rgba(59, 130, 246, 1)',
-        borderWidth: 1,
+        backgroundColor: [
+          '#2563EB',
+          '#10B981',
+          '#F59E0B',
+          '#8B5CF6',
+          '#EF4444',
+          '#06B6D4',
+          '#EC4899',
+          '#0EA5E9',
+          '#84CC16',
+          '#F97316',
+        ],
+        borderRadius: 7,
       },
     ],
   };
