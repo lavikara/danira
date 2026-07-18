@@ -17,6 +17,7 @@ export const loggedInUser = async (
   const userQuery = await findUniqueUser(userKey as RelationKeys, 'id', userId as string, {
     users: true,
     schools: true,
+    group: true,
   });
 
   if (userQuery) {

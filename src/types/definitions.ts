@@ -99,6 +99,7 @@ export type IncludeQuery = {
   guardians?: boolean;
   users?: boolean;
   schools?: boolean;
+  group?: boolean;
 };
 
 export type OmitQuery = {
