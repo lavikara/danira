@@ -1,4 +1,13 @@
-import { PaginateOptions, Paginatable, PaginatedResult } from '../types/definitions.js';
+import {
+  Paginatable,
+  PaginatedResult,
+  PaginatedStudentQuery,
+  StudentQuery,
+  StaffQuery,
+  PaginatedStudentResult,
+  PaginatedStaffResult,
+  PaginatedStaffQuery,
+} from '../types/definitions.js';
 
 /**
  * Generic offset-based pagination for any Prisma model delegate
@@ -7,11 +16,18 @@ import { PaginateOptions, Paginatable, PaginatedResult } from '../types/definiti
  * Runs findMany + count in parallel inside a single call so callers
  * never have to hand-roll skip/take/Promise.all logic per route.
  */
-export async function paginate<T>(
-  delegate: Paginatable<T>,
-  { where = {}, orderBy, select, include, page, limit }: PaginateOptions,
+export async function paginate<T extends StudentQuery & StaffQuery>(
+  delegate: Paginatable,
+  {
+    where = {},
+    orderBy,
+    select,
+    include,
+    page,
+    limit,
+  }: PaginatedStudentQuery & PaginatedStaffQuery,
   message: string,
-): Promise<PaginatedResult<T>> {
+): Promise<PaginatedStudentResult<T> & PaginatedStaffResult<T>> {
   const skip = (page - 1) * limit;
 
   const findArgs: Record<string, any> = {
@@ -19,7 +35,6 @@ export async function paginate<T>(
     skip,
     take: limit,
   };
-
   if (orderBy) findArgs.orderBy = orderBy;
   // select and include are mutually exclusive in Prisma — only pass one.
   if (select) {
