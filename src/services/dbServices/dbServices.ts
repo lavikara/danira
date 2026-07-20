@@ -8,7 +8,8 @@ import {
   AdminToUser,
   FindFirst,
   FindMany,
-  PaginatedDbQuery,
+  PaginatedStudentQuery,
+  PaginatedStaffQuery,
   TableColumn,
   UserToRelation,
   UniqueSchoolData,
@@ -16,7 +17,7 @@ import {
 
 export const paginatedResource = async (
   table: RelationKeys,
-  query: PaginatedDbQuery,
+  query: PaginatedStudentQuery & PaginatedStaffQuery,
   message: string,
 ) => {
   return await paginate(prismaClient[table], query, message);
