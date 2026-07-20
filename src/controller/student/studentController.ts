@@ -98,41 +98,6 @@ export const allSingleSchoolStudent = async (req: Request, res: Response, next: 
   }
 };
 
-// export const singleSchoolStudentAnalytics = async (
-//   req: Request,
-//   res: Response,
-//   next: NextFunction,
-// ) => {
-//   const { schoolId } = req.params;
-
-//   const studentWhere: Record<string, any> = {};
-//   if (schoolId) studentWhere.schoolId = schoolId;
-
-//   const [totalStudents, activeStudents, newIntakes, outstandingFees, studentsByDepartment] =
-//     await getStudentAnalyticsData(studentWhere, [schoolId] as string[], 'school');
-
-//   const chartItems = studentsByDepartment.map((department) => ({
-//     label: [department.name].filter(Boolean).join(' ') || department.departmentId,
-//     value: department.studentCount,
-//   }));
-
-//   const studentByDepartmentChart: ChartJsData = toChartData(chartItems, 'Students in Department');
-//   const timestamp = new Date().toISOString();
-
-//   res.json({
-//     totalStudents,
-//     activeStudents,
-//     newIntakes,
-//     outstandingFees,
-//     studentsByDepartment: {
-//       chart: studentByDepartmentChart,
-//     },
-//     timestamp,
-//     success: true,
-//     message: 'Staff analytics fetched.',
-//   });
-// };
-
 export const singleSchoolStudentAnalytics = async (
   req: Request,
   res: Response,
@@ -268,45 +233,6 @@ export const allGroupSchoolStudent = async (req: Request, res: Response, next: N
   }
 };
 
-// export const groupStudentAnalytics = async (req: Request, res: Response, next: NextFunction) => {
-//   // const schoolIds = req.schoolIds as string[];
-
-//   // const studentWhere: Record<string, any> = { schoolId: { in: schoolIds } };
-//   const { groupId } = req.params;
-
-//   const studentWhere: Record<string, any> = {};
-//   const studentUserWhere: Record<string, any> = {};
-
-//   const schoolIds = req.schoolIds as string[];
-
-//   if (groupId) {
-//     studentWhere.school = { group: { id: groupId } };
-//     studentUserWhere.staffs = { school: { group: { id: groupId } } };
-//   }
-//   const [totalStudents, activeStudents, newIntakes, outstandingFees, studentsByDepartment] =
-//     await getStudentAnalyticsData(studentWhere, schoolIds, 'group');
-
-//   const chartItems = studentsByDepartment.map((department) => ({
-//     label: [department.name].filter(Boolean).join(' ') || department.departmentId,
-//     value: department.studentCount,
-//   }));
-//   const studentByDepartmentChart: ChartJsData = toChartData(chartItems, 'Students in Department');
-//   const timestamp = new Date().toISOString();
-
-//   res.json({
-//     totalStudents,
-//     activeStudents,
-//     newIntakes,
-//     outstandingFees,
-//     studentsByDepartment: {
-//       chart: studentByDepartmentChart,
-//     },
-//     timestamp,
-//     success: true,
-//     message: 'Staff analytics fetched.',
-//   });
-// };
-
 export const groupStudentAnalytics = async (req: Request, res: Response, next: NextFunction) => {
   const { groupId } = req.params;
 
@@ -327,7 +253,7 @@ export const groupStudentAnalytics = async (req: Request, res: Response, next: N
     outstandingFees,
     studentsByDepartment,
     studentsByGender,
-  ] = await getStudentAnalyticsData(studentWhere, schoolIds, 'group');
+  ] = await getStudentAnalyticsData(studentWhere, [groupId as string], 'group');
 
   const departmentChartItems = studentsByDepartment.map((department) => ({
     label: [department.name].filter(Boolean).join(' ') || department.departmentId,
