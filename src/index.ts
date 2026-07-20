@@ -14,6 +14,7 @@ import authRouter from './routes/auth/authRouter.js';
 import userRouter from './routes/user/userRouter.js';
 import schoolRouter from './routes/school/schoolRouter.js';
 import staffRouter from './routes/staff/staffRouter.js';
+import studentRouter from './routes/student/studentRouter.js';
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -28,6 +29,8 @@ app.use('/user', userRouter);
 app.use('/school', schoolRouter);
 
 app.use('/staff', staffRouter);
+
+app.use('/student', studentRouter);
 
 app.use('/auth', authRouter);
 

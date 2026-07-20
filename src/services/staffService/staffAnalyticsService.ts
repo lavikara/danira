@@ -9,7 +9,7 @@ interface TeacherWorkload {
   studentCount: number;
 }
 
-export async function getAnalyticsData(
+export async function getStaffAnalyticsData(
   staffWhere: Record<string, any>,
   staffUserWhere: Record<string, any>,
   schoolId: string[],

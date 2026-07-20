@@ -10,6 +10,8 @@ import {
   SchoolGroups,
   Role,
 } from '../generated/browser.js';
+import { Prisma } from '../generated/client.js';
+
 import {
   SchoolDataInput,
   GroupDataInput,
@@ -99,6 +101,7 @@ export type IncludeQuery = {
   guardians?: boolean;
   users?: boolean;
   schools?: boolean;
+  group?: boolean;
 };
 
 export type OmitQuery = {
@@ -119,7 +122,7 @@ export interface FindFirst {
 export interface FindMany {
   table: RelationKeys;
   where: TableColumn;
-  whereValue: string[];
+  whereArray: string[];
   include?: IncludeQuery;
 }
 
@@ -150,7 +153,7 @@ export interface SignupPayload {
   adminData: AdminDataInputWithStatus;
 }
 
-interface BarChartDataset {
+interface ChartDataset {
   label: string;
   data: number[];
   backgroundColor?: string | string[];
@@ -158,9 +161,9 @@ interface BarChartDataset {
   borderRadius?: number;
 }
 
-export interface ChartJsBarData {
+export interface ChartJsData {
   labels: string[];
-  datasets: BarChartDataset[];
+  datasets: ChartDataset[];
 }
 
 export interface PaginationQuery {
@@ -172,18 +175,29 @@ export interface PaginationQuery {
   search?: string | undefined;
 }
 
-export interface PaginatedDbQuery {
-  where: Record<string, any>;
+export interface PageQuery {
   page: number;
   limit: number;
-  orderBy: Record<string, any>;
-  include?: {
-    users?: { omit: { password: boolean } };
-    school?: boolean;
-    department?: { select: { name: boolean } };
-    headOfDepartment?: boolean;
-  };
 }
+
+export type StudentQuery = Prisma.StudentsFindManyArgs;
+
+export type StaffQuery = Prisma.StaffsFindManyArgs;
+
+export type PaginatedQuery<T> = T & PageQuery;
+
+export type PaginatedStudentQuery = PaginatedQuery<StudentQuery>;
+
+export type PaginatedStaffQuery = PaginatedQuery<StaffQuery>;
+
+// Infer the actual payload shape from the query args (respects include/select)
+export type PaginatedStudentResult<Q extends StudentQuery = StudentQuery> = PaginatedResult<
+  Prisma.StudentsGetPayload<Q>
+>;
+
+export type PaginatedStaffResult<Q extends StaffQuery = StaffQuery> = PaginatedResult<
+  Prisma.StaffsGetPayload<Q>
+>;
 
 export interface PaginationMeta {
   page: number;
@@ -202,18 +216,9 @@ export interface PaginatedResult<T> {
   message: string;
 }
 
-export interface Paginatable<T> {
-  findMany: (args: any) => Promise<T[]>;
+export interface Paginatable {
+  findMany: (args: any) => Promise<any>;
   count: (args: any) => Promise<number>;
-}
-
-export interface PaginateOptions {
-  where?: Record<string, any>;
-  orderBy?: Record<string, 'asc' | 'desc'> | Record<string, 'asc' | 'desc'>[];
-  select?: Record<string, any>;
-  include?: Record<string, any>;
-  page: number;
-  limit: number;
 }
 
 declare global {

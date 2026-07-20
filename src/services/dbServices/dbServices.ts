@@ -8,7 +8,8 @@ import {
   AdminToUser,
   FindFirst,
   FindMany,
-  PaginatedDbQuery,
+  PaginatedStudentQuery,
+  PaginatedStaffQuery,
   TableColumn,
   UserToRelation,
   UniqueSchoolData,
@@ -16,7 +17,7 @@ import {
 
 export const paginatedResource = async (
   table: RelationKeys,
-  query: PaginatedDbQuery,
+  query: PaginatedStudentQuery & PaginatedStaffQuery,
   message: string,
 ) => {
   return await paginate(prismaClient[table], query, message);
@@ -74,7 +75,7 @@ export const findFirst = async (query: FindFirst) => {
 
 export const findMany = async (query: FindMany) => {
   return await prismaClient[query.table].findMany({
-    where: { [query.where]: { in: query.whereValue } },
+    where: { [query.where]: { in: query.whereArray } },
     include: query.include as IncludeQuery,
   });
 };

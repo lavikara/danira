@@ -44,19 +44,36 @@ export function pagination(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+type OrderDirection = 'asc' | 'desc';
+type SortOrderBy = Record<string, any>;
+type SortResolver<T extends string> = {
+  (requested?: string): T;
+  (requested?: string, order?: OrderDirection): SortOrderBy;
+};
+
 /**
  * Returns a small helper that validates a requested `sortBy` field against
  * an allow-list for a specific model, falling back to a safe default.
- * This prevents arbitrary/unknown columns from being passed into orderBy.
+ * It can also resolve relation-based fields into a Prisma-compatible orderBy
+ * object when a mapper is provided.
  */
 export function createSortWhitelist<T extends string>(
   allowedFields: readonly T[],
   defaultField: T,
-) {
-  return (requested?: string): T => {
-    if (requested && (allowedFields as readonly string[]).includes(requested)) {
-      return requested as T;
+  fieldMapper?: Partial<Record<T, (order: OrderDirection) => SortOrderBy>>,
+): SortResolver<T> {
+  const resolve = (requested?: string, order?: OrderDirection) => {
+    const field =
+      requested && (allowedFields as readonly string[]).includes(requested)
+        ? (requested as T)
+        : defaultField;
+
+    if (order !== undefined && fieldMapper?.[field]) {
+      return fieldMapper[field](order);
     }
-    return defaultField;
+
+    return field;
   };
+
+  return resolve as SortResolver<T>;
 }

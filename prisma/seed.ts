@@ -9,6 +9,7 @@ import {
   Role,
   Accomodation,
   TermType,
+  FeeCategory,
 } from '../src/generated/client.js';
 import bcrypt from 'bcryptjs';
 import { prismaClient } from '../src/services/dbServices/dbClient/prismaClient.js';
@@ -43,6 +44,39 @@ function phone(seed: number): string {
 /** A deterministic 3.0–5.0 rating so every user gets a plausible, varied score. */
 function rating(seed: number): number {
   return Math.round((30 + (seed % 21)) * 10) / 100;
+}
+
+/** Deterministic ACTIVE / LEAVE status for staff user accounts. */
+function staffStatus(i: number): 'ACTIVE' | 'LEAVE' {
+  return i % 2 === 0 ? 'ACTIVE' : 'LEAVE';
+}
+
+/** Deterministic ACTIVE / SUSPENDED status for student user accounts. */
+function studentStatus(i: number): 'ACTIVE' | 'SUSPENDED' {
+  return i % 2 === 0 ? 'ACTIVE' : 'SUSPENDED';
+}
+
+/** Deterministic PAID / PARTIAL / UNPAID cycle for fee records. */
+function feeStatus(i: number): 'PAID' | 'PARTIAL' | 'UNPAID' {
+  const cycle = ['PAID', 'PARTIAL', 'UNPAID'] as const;
+  return cycle[i % cycle.length];
+}
+
+/**
+ * Splits a fee's `amount` into `paid` + `outstanding` (they always sum back
+ * to `amount`) based on its status. PARTIAL payments land somewhere between
+ * 30%–70% paid, varied deterministically by `seed`.
+ */
+function paymentSplit(
+  amount: number,
+  status: 'PAID' | 'PARTIAL' | 'UNPAID',
+  seed: number,
+): { paid: number; outstanding: number } {
+  if (status === 'PAID') return { paid: amount, outstanding: 0 };
+  if (status === 'UNPAID') return { paid: 0, outstanding: amount };
+  const fraction = 0.3 + (seed % 5) * 0.1; // 30%, 40%, 50%, 60%, or 70% paid
+  const paid = Math.round(amount * fraction);
+  return { paid, outstanding: amount - paid };
 }
 
 /** Deterministically generates a "named individual" from two pools, avoiding faker. */
@@ -130,9 +164,25 @@ const LAST_NAME_POOL = [
   'Tanimu',
   'Ugo',
 ];
+// Running counter that guarantees every call to personFor() below receives a
+// distinct index, so no two staff/student records ever end up with the same
+// first+last name pairing (see personFor's base-40 encoding for why a
+// distinct index is what makes that guarantee hold).
+let personSeq = 0;
+function nextPersonIndex(): number {
+  return personSeq++;
+}
+
+/**
+ * Maps a distinct index to a distinct (firstName, lastName) pair via a
+ * base-N encoding over the two pools (firstIndex = i % N, lastIndex =
+ * floor(i / N) % N) — this supports up to POOL_SIZE² unique combinations
+ * (40 × 40 = 1,600) before any repeat, which comfortably covers every
+ * staff/student record seeded here. Always call with nextPersonIndex().
+ */
 function personFor(i: number): [string, string, Gender] {
   const firstName = FIRST_NAME_POOL[i % FIRST_NAME_POOL.length];
-  const lastName = LAST_NAME_POOL[(i * 13 + 5) % LAST_NAME_POOL.length];
+  const lastName = LAST_NAME_POOL[Math.floor(i / FIRST_NAME_POOL.length) % LAST_NAME_POOL.length];
   const gender = i % 2 === 0 ? Gender.MALE : Gender.FEMALE;
   return [firstName, lastName, gender];
 }
@@ -143,6 +193,7 @@ async function clearDatabase(): Promise<void> {
   await prismaClient.attendance.deleteMany();
   await prismaClient.reportCards.deleteMany();
   await prismaClient.fees.deleteMany();
+  await prismaClient.feeStructures.deleteMany();
   await prismaClient.events.deleteMany();
   await prismaClient.announcements.deleteMany();
   await prismaClient.lessons.deleteMany();
@@ -331,6 +382,7 @@ async function main(): Promise<void> {
           isApproved: true,
           termsConditions: true,
           schoolName: s.schoolName,
+          regNumber: `RC-${String(100000 + i * 1234)}`,
           address: `${s.schoolName} Campus Road, Nigeria`,
           phoneNumber: phone(i + 100),
           country: 'Nigeria',
@@ -348,6 +400,117 @@ async function main(): Promise<void> {
   const groupBSchools = schools.filter((s) => s.groupId === groupB.id);
   const schoolTypeById = new Map(schools.map((s) => [s.id, s.type]));
   const schoolShortNameById = new Map(schools.map((s, i) => [s.id, schoolDefs[i].shortName]));
+
+  // ── 4b. FEE STRUCTURES (90) ──────────────────────────────────────────────
+  //   Every school gets its own catalog of fee types, split into:
+  //     • COMPULSORY (5) — Tuition, Library, Books & Stationery,
+  //       Development Levy, Examination Fee. Charged to every student.
+  //     • OPTIONAL (4)   — Transportation (school bus), Lunch,
+  //       Extracurricular Activities, Boarding. Charged only to students
+  //       who opt in.
+  //   Base amounts scale by SchoolType (primary < secondary < tertiary), so
+  //   a school's own class type drives what it charges — 10 schools ×
+  //   9 fee types = 90 FeeStructures rows.
+  console.log('💵  Seeding FeeStructures …');
+
+  const compulsoryFeeTemplates = [
+    {
+      name: 'Tuition Fee',
+      description: 'Core academic tuition for the term.',
+      base: { PRIMARY: 45_000, SECONDARY: 60_000, TERTIARY: 85_000 },
+    },
+    {
+      name: 'Library Fee',
+      description: 'Access to library resources and borrowing privileges.',
+      base: { PRIMARY: 3_000, SECONDARY: 3_500, TERTIARY: 4_500 },
+    },
+    {
+      name: 'Books & Stationery Fee',
+      description: 'Termly textbooks, workbooks, and stationery supplies.',
+      base: { PRIMARY: 8_000, SECONDARY: 10_000, TERTIARY: 12_000 },
+    },
+    {
+      name: 'Development Levy',
+      description: 'Contribution toward school facility upkeep and development.',
+      base: { PRIMARY: 5_000, SECONDARY: 6_000, TERTIARY: 7_500 },
+    },
+    {
+      name: 'Examination Fee',
+      description: 'Covers termly tests, exams, and report card processing.',
+      base: { PRIMARY: 2_500, SECONDARY: 3_500, TERTIARY: 5_000 },
+    },
+  ] as const;
+
+  const optionalFeeTemplates = [
+    {
+      name: 'Transportation Fee (School Bus)',
+      description: 'Optional daily school bus pickup and drop-off service.',
+      base: { PRIMARY: 12_000, SECONDARY: 14_000, TERTIARY: 16_000 },
+    },
+    {
+      name: 'Lunch Fee',
+      description: 'Optional daily hot-lunch feeding program.',
+      base: { PRIMARY: 9_000, SECONDARY: 10_000, TERTIARY: 11_000 },
+    },
+    {
+      name: 'Extracurricular Activities Fee',
+      description: 'Clubs, sports teams, and after-school activities.',
+      base: { PRIMARY: 4_000, SECONDARY: 5_000, TERTIARY: 6_000 },
+    },
+    {
+      name: 'Boarding Fee',
+      description: 'Optional on-campus boarding accommodation for the term.',
+      base: { PRIMARY: 60_000, SECONDARY: 75_000, TERTIARY: 90_000 },
+    },
+  ] as const;
+
+  const feeStructures = (
+    await Promise.all(
+      schools.map((school) =>
+        Promise.all([
+          ...compulsoryFeeTemplates.map((tpl) =>
+            prismaClient.feeStructures.create({
+              data: {
+                name: tpl.name,
+                description: tpl.description,
+                category: FeeCategory.COMPULSORY,
+                amount: tpl.base[school.type],
+                classType: school.type,
+                schoolId: school.id,
+              },
+            }),
+          ),
+          ...optionalFeeTemplates.map((tpl) =>
+            prismaClient.feeStructures.create({
+              data: {
+                name: tpl.name,
+                description: tpl.description,
+                category: FeeCategory.OPTIONAL,
+                amount: tpl.base[school.type],
+                classType: school.type,
+                schoolId: school.id,
+              },
+            }),
+          ),
+        ]),
+      ),
+    )
+  ).flat(2);
+
+  // Per-school lookup of that school's own compulsory / optional catalog,
+  // used later to bill each student against fees that actually belong to
+  // their own school.
+  const feeStructuresBySchoolId = new Map<
+    string,
+    { compulsory: typeof feeStructures; optional: typeof feeStructures }
+  >();
+  schools.forEach((school) => {
+    const schoolFeeStructures = feeStructures.filter((f) => f.schoolId === school.id);
+    feeStructuresBySchoolId.set(school.id, {
+      compulsory: schoolFeeStructures.filter((f) => f.category === FeeCategory.COMPULSORY),
+      optional: schoolFeeStructures.filter((f) => f.category === FeeCategory.OPTIONAL),
+    });
+  });
 
   // ── 5. DEPARTMENTS (46) ──────────────────────────────────────────────────
   //   Primary schools: Creche, Preschool, Junior, Advance      (4 each)
@@ -582,9 +745,21 @@ async function main(): Promise<void> {
       category: 'Mathematics',
     },
     {
+      name: 'Further Mathematics',
+      code: 'MTH201',
+      description: 'Calculus, vectors, and advanced statistics.',
+      category: 'Mathematics',
+    },
+    {
       name: 'English Language',
       code: 'ENG101',
       description: 'Grammar, comprehension, and composition.',
+      category: 'Language',
+    },
+    {
+      name: 'Literature in English',
+      code: 'LIT201',
+      description: 'Prose, drama, and poetry analysis.',
       category: 'Language',
     },
     {
@@ -630,6 +805,12 @@ async function main(): Promise<void> {
       category: 'Business',
     },
     {
+      name: 'Financial Accounting',
+      code: 'FAC201',
+      description: 'Bookkeeping, ledgers, and financial statements.',
+      category: 'Business',
+    },
+    {
       name: 'Civic Education',
       code: 'CIV101',
       description: 'Citizenship, rights, and responsibilities.',
@@ -660,7 +841,7 @@ async function main(): Promise<void> {
             )!;
             return prismaClient.subjects.create({
               data: {
-                name: `${shortName} ${tpl.name}`,
+                name: tpl.name,
                 code: `${tpl.code}-${shortName.slice(0, 3).toUpperCase()}`,
                 status: 'ACTIVE',
                 description: tpl.description,
@@ -738,7 +919,7 @@ async function main(): Promise<void> {
             )!;
             return prismaClient.subjects.create({
               data: {
-                name: `${shortName} ${tpl.name}`,
+                name: tpl.name,
                 code: `${tpl.code}-${shortName.slice(0, 3).toUpperCase()}`,
                 status: 'ACTIVE',
                 description: tpl.description,
@@ -777,18 +958,25 @@ async function main(): Promise<void> {
     'Head of Department',
   ];
 
-  // 8a. One teacher per subject (covers non-primary AND primary subjects).
-  const teacherStaffs = await Promise.all(
+  // 8a. One teacher per subject (covers non-primary AND primary subjects),
+  //   plus — since every department now has at least 2 subjects — a second
+  //   subject from that same department, so every teacher teaches multiple
+  //   subjects. `teacherRecords` keeps the (staff, subject, secondarySubject)
+  //   pairing around so step 14c can give each teacher a lesson for their
+  //   second subject too, without having to re-derive it.
+  const teacherRecords = await Promise.all(
     subjects.map(async (subject, i) => {
       const department = departments.find((d) => d.id === subject.departmentId)!;
-      const [firstName, lastName, gender] = personFor(i);
+      const deptSubjects = subjects.filter((s) => s.departmentId === subject.departmentId);
+      const secondarySubject = deptSubjects.find((s) => s.id !== subject.id) ?? subject;
+      const [firstName, lastName, gender] = personFor(nextPersonIndex());
       const username = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.teacher${i + 1}`;
       const user = await prismaClient.users.create({
         data: {
           username,
           email: yop(username),
           password,
-          status: 'PENDING',
+          status: staffStatus(i),
           firstName,
           lastName,
           country: 'Nigeria',
@@ -801,9 +989,10 @@ async function main(): Promise<void> {
           ratings: rating(400 + i),
         },
       });
-      return prismaClient.staffs.create({
+      const staff = await prismaClient.staffs.create({
         data: {
           userId: user.id,
+          staffId: `STF-T-${String(i + 1).padStart(3, '0')}`,
           position: teacherPositions[i % teacherPositions.length],
           accomodation:
             i % 3 === 0 ? Accomodation.STAFFQUARTERS : i % 3 === 1 ? Accomodation.ONCAMPUS : null,
@@ -815,11 +1004,17 @@ async function main(): Promise<void> {
                 : StaffStatus.VISITING,
           schoolId: department.schoolId,
           departmentId: department.id,
-          subjects: { connect: [{ id: subject.id }] },
+          subjects:
+            secondarySubject.id === subject.id
+              ? { connect: [{ id: subject.id }] }
+              : { connect: [{ id: subject.id }, { id: secondarySubject.id }] },
         },
       });
+      return { staff, subject, secondarySubject };
     }),
   );
+
+  const teacherStaffs = teacherRecords.map((r) => r.staff);
 
   // 8b. One supplementary, non-subject caregiver per primary-school department.
   const primaryDepartments = departments.filter((d) =>
@@ -827,14 +1022,14 @@ async function main(): Promise<void> {
   );
   const primaryStaffs = await Promise.all(
     primaryDepartments.map(async (department, i) => {
-      const [firstName, lastName, gender] = personFor(200 + i);
+      const [firstName, lastName, gender] = personFor(nextPersonIndex());
       const username = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.primarystaff${i + 1}`;
       const user = await prismaClient.users.create({
         data: {
           username,
           email: yop(username),
           password,
-          status: 'PENDING',
+          status: staffStatus(i),
           firstName,
           lastName,
           country: 'Nigeria',
@@ -850,6 +1045,7 @@ async function main(): Promise<void> {
       return prismaClient.staffs.create({
         data: {
           userId: user.id,
+          staffId: `STF-P-${String(i + 1).padStart(3, '0')}`,
           position: primaryPositions[i % primaryPositions.length],
           accomodation:
             i % 3 === 0 ? Accomodation.STAFFQUARTERS : i % 3 === 1 ? Accomodation.ONCAMPUS : null,
@@ -885,6 +1081,85 @@ async function main(): Promise<void> {
       });
     }),
   );
+
+  // ── 9b. EXTRA SUPPORT STAFF (10 per school = 100) ────────────────────────
+  //   Every school — primary and non-primary alike — gets 10 additional
+  //   non-subject support staff (librarian, nurse, bursar, etc.), each a
+  //   full User + Staffs row attached to one of that school's own
+  //   departments, so they carry the same relation data as the original
+  //   teaching staff (school, department, staffId, employment details).
+  console.log('👥  Seeding extra support Staffs …');
+
+  const EXTRA_STAFF_PER_SCHOOL = 10;
+  const supportPositions = [
+    'Librarian',
+    'School Nurse',
+    'Bursar',
+    'Guidance Counselor',
+    'IT Support Officer',
+    'Sports Coordinator',
+    'Security Officer',
+    'Facility Manager',
+    'Front Desk Officer',
+    'Transport Coordinator',
+  ];
+
+  const extraStaffs = (
+    await Promise.all(
+      schools.map((school, si) => {
+        const schoolDepartments = departments.filter((d) => d.schoolId === school.id);
+        return Promise.all(
+          Array.from({ length: EXTRA_STAFF_PER_SCHOOL }, async (_, j) => {
+            const globalIndex = 4000 + si * EXTRA_STAFF_PER_SCHOOL + j;
+            const department = schoolDepartments[j % schoolDepartments.length];
+            const [firstName, lastName, gender] = personFor(nextPersonIndex());
+            const username = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.staff${globalIndex + 1}`;
+            const user = await prismaClient.users.create({
+              data: {
+                username,
+                email: yop(username),
+                password,
+                status: staffStatus(globalIndex),
+                firstName,
+                lastName,
+                country: 'Nigeria',
+                state: 'Lagos',
+                isVerified: false,
+                phoneNumber: phone(globalIndex),
+                address: `Support Wing, ${school.schoolName}`,
+                gender,
+                role: Role.SCHOOLSTAFF,
+                ratings: rating(globalIndex),
+              },
+            });
+            return prismaClient.staffs.create({
+              data: {
+                userId: user.id,
+                staffId: `STF-X-${String(globalIndex + 1).padStart(4, '0')}`,
+                position: supportPositions[j % supportPositions.length],
+                accomodation:
+                  globalIndex % 3 === 0
+                    ? Accomodation.STAFFQUARTERS
+                    : globalIndex % 3 === 1
+                      ? Accomodation.ONCAMPUS
+                      : null,
+                employmentStatus:
+                  globalIndex % 3 === 0
+                    ? StaffStatus.FULLTIME
+                    : globalIndex % 3 === 1
+                      ? StaffStatus.PERTIME
+                      : StaffStatus.VISITING,
+                schoolId: school.id,
+                departmentId: department.id,
+              },
+            });
+          }),
+        );
+      }),
+    )
+  ).flat();
+
+  const allStaffs = [...staffs, ...extraStaffs];
 
   // ── 10. CLASSES (20) ─────────────────────────────────────────────────────
   //   Every school gets its own classes, not a shared generic pool:
@@ -948,7 +1223,10 @@ async function main(): Promise<void> {
     await Promise.all(
       nonPrimarySchools.map((school, si) => {
         const shortName = schoolShortNameById.get(school.id)!;
-        const schoolTeachers = teacherStaffs.slice(si * 12, si * 12 + 12);
+        const schoolTeachers = teacherStaffs.slice(
+          si * subjectTemplates.length,
+          (si + 1) * subjectTemplates.length,
+        );
         const defs =
           nonPrimaryClassDefsByType[school.type === SchoolType.TERTIARY ? 'TERTIARY' : 'SECONDARY'];
         return Promise.all(
@@ -973,6 +1251,17 @@ async function main(): Promise<void> {
   ).flat();
 
   const classes = [...primaryClasses, ...nonPrimaryClasses];
+
+  // Lookup of each school's own classes, keyed by schoolId — used later to
+  // give primary-dept caregivers and extra support staff a class to teach
+  // in without having to re-derive school/class relationships from scratch.
+  const classesBySchoolId = new Map<string, typeof classes>();
+  primarySchools.forEach((school, si) => {
+    classesBySchoolId.set(school.id, primaryClasses.slice(si * 2, si * 2 + 2));
+  });
+  nonPrimarySchools.forEach((school, si) => {
+    classesBySchoolId.set(school.id, nonPrimaryClasses.slice(si * 2, si * 2 + 2));
+  });
 
   // ── 11. EXAMS (10) ───────────────────────────────────────────────────────
   console.log('📝  Seeding Exams …');
@@ -1040,8 +1329,14 @@ async function main(): Promise<void> {
   const nonPrimaryLessons = (
     await Promise.all(
       nonPrimarySchools.map((school, si) => {
-        const schoolSubjects = nonPrimarySubjects.slice(si * 12, si * 12 + 12);
-        const schoolTeachers = teacherStaffs.slice(si * 12, si * 12 + 12);
+        const schoolSubjects = nonPrimarySubjects.slice(
+          si * subjectTemplates.length,
+          (si + 1) * subjectTemplates.length,
+        );
+        const schoolTeachers = teacherStaffs.slice(
+          si * subjectTemplates.length,
+          (si + 1) * subjectTemplates.length,
+        );
         const schoolClasses = nonPrimaryClasses.slice(si * 2, si * 2 + 2);
         const periodsPerDay = Math.ceil(schoolSubjects.length / days.length); // 3
 
@@ -1119,7 +1414,91 @@ async function main(): Promise<void> {
     )
   ).flat();
 
-  const lessons = [...nonPrimaryLessons, ...primaryLessons];
+  // ── 14c. SECOND-SUBJECT LESSONS FOR TEACHERS ─────────────────────────────
+  //   Every teacher who was given a second subject in step 8a (i.e. almost
+  //   all of them, now that every department has ≥2 subjects) gets one more
+  //   lesson for that second subject, reusing one of their own school's
+  //   existing classes at a slot right after the regular timetable — so a
+  //   teacher visibly teaches multiple subjects AND multiple lessons, not
+  //   just multiple classes for a single subject.
+  console.log('📘  Assigning second-subject Lessons to teachers …');
+
+  const secondSubjectLessons = await Promise.all(
+    teacherRecords
+      .filter((r) => r.secondarySubject.id !== r.subject.id)
+      .map(async (r, i) => {
+        const schoolClasses = classesBySchoolId.get(r.staff.schoolId) ?? [];
+        const cls = schoolClasses[i % schoolClasses.length];
+        const dayIndex = i % days.length;
+        const startHour = 13 + (i % 2); // slot right after the regular timetable
+
+        return prismaClient.lessons.create({
+          data: {
+            name: `${r.secondarySubject.name} — ${cls.name} — ${r.staff.staffId} (2nd subject)`,
+            description: `${r.secondarySubject.name} period for ${cls.name}, taught by ${r.staff.staffId} as a second subject.`,
+            day: days[dayIndex],
+            status: 'UPCOMING',
+            startTime: new Date(2026, 0, 5, startHour, 0, 0),
+            endTime: new Date(2026, 0, 5, startHour + 1, 0, 0),
+            subjectId: r.secondarySubject.id,
+            classId: cls.id,
+            staffId: r.staff.id,
+            assignmentId: assignments[i % assignments.length].id,
+          },
+        });
+      }),
+  );
+
+  // ── 14b. ASSIGN SUBJECTS & LESSONS TO SUPPORT STAFF ──────────────────────
+  //   teacherStaffs already carry a subject + lessons from step 14 above.
+  //   The 16 primary-dept caregivers (primaryStaffs) and 100 extra support
+  //   staff (extraStaffs) were created without either — every Staffs
+  //   record should have both, so each is connected to a subject from
+  //   their own department and given one lesson of their own, at their own
+  //   school, so literally every teacher in the system is teaching
+  //   something.
+  console.log('📎  Assigning Subjects & Lessons to support staff …');
+
+  const supportStaffs = [...primaryStaffs, ...extraStaffs];
+
+  const supportLessons = await Promise.all(
+    supportStaffs.map(async (staff, i) => {
+      const deptSubjects = subjects.filter((s) => s.departmentId === staff.departmentId);
+      const subject = deptSubjects[i % deptSubjects.length];
+
+      await prismaClient.staffs.update({
+        where: { id: staff.id },
+        data: { subjects: { connect: [{ id: subject.id }] } },
+      });
+
+      const schoolClasses = classesBySchoolId.get(staff.schoolId) ?? [];
+      const cls = schoolClasses[i % schoolClasses.length];
+      const dayIndex = i % days.length;
+      const startHour = 14 + (i % 3); // afternoon slot, after the regular timetable
+
+      return prismaClient.lessons.create({
+        data: {
+          name: `${subject.name} — ${cls.name} — ${staff.position} (${staff.staffId})`,
+          description: `${subject.name} support session for ${cls.name}, led by ${staff.position} ${staff.staffId}.`,
+          day: days[dayIndex],
+          status: 'UPCOMING',
+          startTime: new Date(2026, 0, 5, startHour, 0, 0),
+          endTime: new Date(2026, 0, 5, startHour + 1, 0, 0),
+          subjectId: subject.id,
+          classId: cls.id,
+          staffId: staff.id,
+          assignmentId: assignments[i % assignments.length].id,
+        },
+      });
+    }),
+  );
+
+  const lessons = [
+    ...nonPrimaryLessons,
+    ...primaryLessons,
+    ...secondSubjectLessons,
+    ...supportLessons,
+  ];
 
   // ── 15. GUARDIANS + USERS (10) ────────────────────────────────────────────
   console.log('👨‍👩‍👧  Seeding Guardians …');
@@ -1182,19 +1561,22 @@ async function main(): Promise<void> {
       nonPrimaryClasses.map((cls, classIdx) => {
         const si = Math.floor(classIdx / 2); // which non-primary school this class belongs to
         const school = nonPrimarySchools[si];
-        const schoolSubjects = nonPrimarySubjects.slice(si * 12, si * 12 + 12);
+        const schoolSubjects = nonPrimarySubjects.slice(
+          si * subjectTemplates.length,
+          (si + 1) * subjectTemplates.length,
+        );
 
         return Promise.all(
           Array.from({ length: STUDENTS_PER_NON_PRIMARY_CLASS }, async (_, j) => {
             const globalIndex = classIdx * STUDENTS_PER_NON_PRIMARY_CLASS + j;
-            const [firstName, lastName, gender] = personFor(900 + globalIndex);
+            const [firstName, lastName, gender] = personFor(nextPersonIndex());
             const username = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.student${globalIndex + 1}`;
             const user = await prismaClient.users.create({
               data: {
                 username,
                 email: yop(username),
                 password,
-                status: 'PENDING',
+                status: studentStatus(globalIndex),
                 firstName,
                 lastName,
                 country: 'Nigeria',
@@ -1210,6 +1592,7 @@ async function main(): Promise<void> {
             const student = await prismaClient.students.create({
               data: {
                 userId: user.id,
+                studentId: `STU-${String(globalIndex + 1).padStart(4, '0')}`,
                 accomodation:
                   globalIndex % 3 === 0 ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
                 classId: cls.id,
@@ -1237,14 +1620,14 @@ async function main(): Promise<void> {
       const school = primarySchools[si];
       const schoolSubjects = primarySubjects.slice(si * 8, si * 8 + 8);
       const globalIndex = 1000 + classIdx;
-      const [firstName, lastName, gender] = personFor(globalIndex);
+      const [firstName, lastName, gender] = personFor(nextPersonIndex());
       const username = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.pupil${classIdx + 1}`;
       const user = await prismaClient.users.create({
         data: {
           username,
           email: yop(username),
           password,
-          status: 'PENDING',
+          status: studentStatus(classIdx),
           firstName,
           lastName,
           country: 'Nigeria',
@@ -1260,6 +1643,7 @@ async function main(): Promise<void> {
       const student = await prismaClient.students.create({
         data: {
           userId: user.id,
+          studentId: `STU-P-${String(classIdx + 1).padStart(3, '0')}`,
           accomodation: classIdx % 2 === 0 ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
           classId: cls.id,
           guardianId: guardians[classIdx % guardians.length].id,
@@ -1275,30 +1659,194 @@ async function main(): Promise<void> {
     }),
   );
 
-  const students = [...nonPrimaryStudents, ...primaryStudents];
+  // ── 16b. EXTRA STUDENTS (10 per school = 100) ────────────────────────────
+  //   Every school — primary and non-primary alike — gets 10 additional
+  //   students, spread across that school's own classes and connected to
+  //   its own full subject curriculum, guardian, gradeYear, and (for
+  //   non-primary) exam/test/assignment — the same relation data as the
+  //   original students.
+  console.log('🎒  Seeding extra Students …');
+
+  const EXTRA_STUDENTS_PER_SCHOOL = 10;
+
+  const extraNonPrimaryStudents = (
+    await Promise.all(
+      nonPrimarySchools.map((school, si) => {
+        const schoolSubjects = nonPrimarySubjects.slice(
+          si * subjectTemplates.length,
+          (si + 1) * subjectTemplates.length,
+        );
+        const schoolClasses = nonPrimaryClasses.slice(si * 2, si * 2 + 2);
+        return Promise.all(
+          Array.from({ length: EXTRA_STUDENTS_PER_SCHOOL }, async (_, j) => {
+            const globalIndex = 2000 + si * EXTRA_STUDENTS_PER_SCHOOL + j;
+            const cls = schoolClasses[j % schoolClasses.length];
+            const [firstName, lastName, gender] = personFor(nextPersonIndex());
+            const username = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.student${globalIndex + 1}`;
+            const user = await prismaClient.users.create({
+              data: {
+                username,
+                email: yop(username),
+                password,
+                status: studentStatus(globalIndex),
+                firstName,
+                lastName,
+                country: 'Nigeria',
+                state: 'Lagos',
+                isVerified: false,
+                phoneNumber: phone(globalIndex),
+                address: `${globalIndex + 1} Student Hostel, ${school.schoolName}`,
+                gender,
+                role: Role.STUDENT,
+                ratings: rating(globalIndex),
+              },
+            });
+            const student = await prismaClient.students.create({
+              data: {
+                userId: user.id,
+                studentId: `STU-X-${String(globalIndex + 1).padStart(4, '0')}`,
+                accomodation:
+                  globalIndex % 3 === 0 ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
+                classId: cls.id,
+                guardianId: guardians[globalIndex % guardians.length].id,
+                schoolId: school.id,
+                gradeYearId: cls.gradeYearId,
+                examId: exams[globalIndex % exams.length].id,
+                testId: tests[globalIndex % tests.length].id,
+                assignmentId: assignments[globalIndex % assignments.length].id,
+                departmentId: cls.departmentId,
+                subjects: { connect: schoolSubjects.map((s) => ({ id: s.id })) },
+              },
+            });
+            studentSubjectsMap.set(student.id, schoolSubjects);
+            return student;
+          }),
+        );
+      }),
+    )
+  ).flat();
+
+  const extraPrimaryStudents = (
+    await Promise.all(
+      primarySchools.map((school, si) => {
+        const schoolSubjects = primarySubjects.slice(si * 8, si * 8 + 8);
+        const schoolClasses = primaryClasses.slice(si * 2, si * 2 + 2);
+        return Promise.all(
+          Array.from({ length: EXTRA_STUDENTS_PER_SCHOOL }, async (_, j) => {
+            const globalIndex = 3000 + si * EXTRA_STUDENTS_PER_SCHOOL + j;
+            const cls = schoolClasses[j % schoolClasses.length];
+            const [firstName, lastName, gender] = personFor(nextPersonIndex());
+            const username = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.pupil${globalIndex + 1}`;
+            const user = await prismaClient.users.create({
+              data: {
+                username,
+                email: yop(username),
+                password,
+                status: studentStatus(globalIndex),
+                firstName,
+                lastName,
+                country: 'Nigeria',
+                state: 'Lagos',
+                isVerified: false,
+                phoneNumber: phone(globalIndex),
+                address: `${globalIndex + 1} Pupil Hostel, ${school.schoolName}`,
+                gender,
+                role: Role.STUDENT,
+                ratings: rating(globalIndex),
+              },
+            });
+            const student = await prismaClient.students.create({
+              data: {
+                userId: user.id,
+                studentId: `STU-XP-${String(globalIndex + 1).padStart(4, '0')}`,
+                accomodation:
+                  globalIndex % 2 === 0 ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
+                classId: cls.id,
+                guardianId: guardians[globalIndex % guardians.length].id,
+                schoolId: school.id,
+                gradeYearId: cls.gradeYearId,
+                departmentId: cls.departmentId,
+                subjects: { connect: schoolSubjects.map((s) => ({ id: s.id })) },
+                // No exam/test/assignment — early years don't sit formal exams.
+              },
+            });
+            studentSubjectsMap.set(student.id, schoolSubjects);
+            return student;
+          }),
+        );
+      }),
+    )
+  ).flat();
+
+  const extraStudents = [...extraNonPrimaryStudents, ...extraPrimaryStudents];
+
+  const students = [...nonPrimaryStudents, ...primaryStudents, ...extraStudents];
 
   // ── 17. ATTENDANCE ───────────────────────────────────────────────────────
   //   Every student — primary and non-primary alike — gets an Attendance
   //   record for EVERY lesson taught in their own class (their full
-  //   timetable), so every student is properly assigned to every lesson in
-  //   their class: 12 lessons each for non-primary students, 8 each for
-  //   primary students.
+  //   timetable, including the second-subject and support-staff lessons
+  //   added above). Attendance is deliberately uneven per student: within
+  //   EVERY school, at least 5% of students are placed in a "very poor"
+  //   tier (below 50% present) and at least 10% are below 60% present
+  //   overall (the very-poor group counts toward that 10%); everyone else
+  //   gets a solid, varied attendance rate.
   console.log('✅  Seeding Attendance …');
+
+  const studentsBySchoolId = new Map<string, typeof students>();
+  students.forEach((student) => {
+    const schoolId = student.schoolId!;
+    const list = studentsBySchoolId.get(schoolId) ?? [];
+    list.push(student);
+    studentsBySchoolId.set(schoolId, list);
+  });
+
+  /**
+   * Deterministically assigns a target PRESENT rate to a student based on
+   * their rank within their own school. The first `veryPoorCount` students
+   * land below 50%, the next slice lands in the 50%–59% band (still below
+   * 60% overall), and everyone after that gets a healthy 75%–95% rate.
+   */
+  function presentRateFor(rankInSchool: number, schoolSize: number): number {
+    const veryPoorCount = Math.max(1, Math.ceil(schoolSize * 0.05));
+    const below60Count = Math.max(veryPoorCount, Math.ceil(schoolSize * 0.1));
+
+    if (rankInSchool < veryPoorCount) {
+      return 0.3 + (rankInSchool % 4) * 0.03; // 30% – 39% present (below 50%)
+    }
+    if (rankInSchool < below60Count) {
+      return 0.5 + ((rankInSchool - veryPoorCount) % 5) * 0.018; // 50% – 58.2% present
+    }
+    const normalRank = rankInSchool - below60Count;
+    return 0.75 + (normalRank % 7) * 0.033; // 75% – 94.8% present
+  }
 
   await Promise.all(
     students.flatMap((student) => {
+      const schoolId = student.schoolId!;
+      const schoolStudents = studentsBySchoolId.get(schoolId) ?? [student];
+      const rankInSchool = schoolStudents.findIndex((s) => s.id === student.id);
+      const presentRate = presentRateFor(rankInSchool, schoolStudents.length);
+
       const classLessons = lessons.filter((l) => l.classId === student.classId);
-      return classLessons.map((lesson, li) =>
-        prismaClient.attendance.create({
+      const absentTarget = Math.round(classLessons.length * (1 - presentRate));
+
+      // A cyclic shift of a fixed "N absent / rest present" mask — this is
+      // a bijection for any classLessons.length, so it guarantees EXACTLY
+      // absentTarget absences (matching the intended rate precisely) while
+      // still varying which specific lessons are marked absent per student.
+      return classLessons.map((lesson, li) => {
+        const shifted = (li + rankInSchool) % classLessons.length;
+        return prismaClient.attendance.create({
           data: {
             date: daysFromNow(-(li + 1)),
             status: 'UPCOMING',
-            attendance: li % 6 === 0 ? AttendanceStatus.ABSENT : AttendanceStatus.PRESENT,
+            attendance: shifted < absentTarget ? AttendanceStatus.ABSENT : AttendanceStatus.PRESENT,
             studentId: student.id,
             lessonId: lesson.id,
           },
-        }),
-      );
+        });
+      });
     }),
   );
 
@@ -1330,29 +1878,90 @@ async function main(): Promise<void> {
     }),
   );
 
-  // ── 19. FEES (32) ──────────────────────────────────────────────────────────
+  // ── 19. FEES ──────────────────────────────────────────────────────────────
+  //   Every student is billed every compulsory fee from their OWN school's
+  //   catalog (step 4b), plus exactly one optional fee (transportation,
+  //   lunch, etc.) cycled from that same school's catalog — so a fee is
+  //   never generic, it's always tied to the student's school, class, and
+  //   the FeeStructures row it came from. Every fee also carries `paid` +
+  //   `outstanding` (always summing to `amount`). A student's overall
+  //   payment status is "paid" once every one of their COMPULSORY fees is
+  //   PAID — every 4th student (25%, in every school) is forced fully paid
+  //   on all compulsory fees so that rule always has real examples to find.
   console.log('💰  Seeding Fees …');
 
-  const feeTypes = [
-    { name: 'Tuition Fee', amount: 45_000 },
-    { name: 'Library Fee', amount: 3_500 },
-    { name: 'Sports Fee', amount: 5_000 },
-    { name: 'Boarding Fee', amount: 60_000 },
-    { name: 'Exam Fee', amount: 8_000 },
-  ];
+  const fees = await Promise.all(
+    students.flatMap((student, i) => {
+      const schoolId = student.schoolId!;
+      const catalog = feeStructuresBySchoolId.get(schoolId);
+      if (!catalog) return [];
 
-  await Promise.all(
-    students.map((student, i) => {
-      const fee = feeTypes[i % feeTypes.length];
-      return prismaClient.fees.create({
+      const schoolClasses = classesBySchoolId.get(schoolId) ?? [];
+      const classIndex = Math.max(
+        schoolClasses.findIndex((c) => c.id === student.classId),
+        0,
+      );
+      const classDifferential = classIndex * 1_500; // senior class pays a bit more
+
+      // Every 4th student has fully settled all compulsory fees — the
+      // guaranteed "fully paid" cohort the payment-status rule needs.
+      const isFullyPaidStudent = i % 4 === 0;
+
+      const receiptFor = (status: 'PAID' | 'PARTIAL' | 'UNPAID', seed: number) =>
+        status === 'PAID'
+          ? `RCT-${schoolId.slice(0, 4).toUpperCase()}-${String(seed + 1).padStart(5, '0')}`
+          : null;
+
+      const compulsoryFees = catalog.compulsory.map((structure, si) => {
+        const seed = i * 10 + si;
+        const status = isFullyPaidStudent ? 'PAID' : feeStatus(seed);
+        const amount = structure.amount + classDifferential;
+        const { paid, outstanding } = paymentSplit(amount, status, seed);
+        return prismaClient.fees.create({
+          data: {
+            name: structure.name,
+            description: structure.description,
+            amount,
+            paid,
+            outstanding,
+            category: FeeCategory.COMPULSORY,
+            status,
+            receipt: receiptFor(status, seed),
+            studentId: student.id,
+            schoolId,
+            classId: student.classId,
+            feeStructureId: structure.id,
+          },
+        });
+      });
+
+      // Every student opts into exactly one optional fee, cycled from the
+      // school's optional catalog so the mix of transport/lunch/etc. varies.
+      // Optional fees don't factor into the "fully paid" rule, so they keep
+      // following the normal status cycle even for isFullyPaidStudent.
+      const optionalStructure = catalog.optional[i % catalog.optional.length];
+      const optionalSeed = i * 10 + catalog.compulsory.length;
+      const optionalStatus = feeStatus(optionalSeed);
+      const optionalAmount = optionalStructure.amount + classDifferential;
+      const optionalSplit = paymentSplit(optionalAmount, optionalStatus, optionalSeed);
+      const optionalFee = prismaClient.fees.create({
         data: {
-          name: fee.name,
-          description: `${fee.name} for the current academic term.`,
-          amount: fee.amount + i * 500,
-          status: 'PAID',
+          name: optionalStructure.name,
+          description: optionalStructure.description,
+          amount: optionalAmount,
+          paid: optionalSplit.paid,
+          outstanding: optionalSplit.outstanding,
+          category: FeeCategory.OPTIONAL,
+          status: optionalStatus,
+          receipt: receiptFor(optionalStatus, optionalSeed),
           studentId: student.id,
+          schoolId,
+          classId: student.classId,
+          feeStructureId: optionalStructure.id,
         },
       });
+
+      return [...compulsoryFees, optionalFee];
     }),
   );
 
@@ -1424,23 +2033,24 @@ async function main(): Promise<void> {
   Table               Records
   ─────────────────── ───────
   SchoolGroups            ${schoolGroups.length}
-  Schools                 ${schools.length}
+  Schools                 ${schools.length}  (each has a regNumber)
   Departments             ${departments.length}  (4/primary school, 5/secondary+tertiary school; every one has a head)
   Admins                  14
-  Staffs                  ${staffs.length}  (${teacherStaffs.length} subject teachers (incl. primary) + ${primaryStaffs.length} primary-dept caregivers)
+  Staffs                  ${allStaffs.length}  (${teacherStaffs.length} subject teachers (incl. primary) + ${primaryStaffs.length} primary-dept caregivers + ${extraStaffs.length} extra support staff (10/school); each has a staffId, ACTIVE/LEAVE status, and is assigned at least one subject + lesson — most teachers now teach 2 subjects across multiple lessons)
   Classes                 ${classes.length}  (2 per school, every school has its own)
-  Subjects                ${subjects.length}  (${nonPrimarySubjects.length} academic, ${primarySubjects.length} early-years — every school has its own curriculum + teacher)
+  Subjects                ${subjects.length}  (${nonPrimarySubjects.length} academic (${subjectTemplates.length}/school, every department has ≥2), ${primarySubjects.length} early-years — every school has its own curriculum + teacher, names no longer prefixed with school)
+  FeeStructures           ${feeStructures.length}  (${compulsoryFeeTemplates.length} compulsory + ${optionalFeeTemplates.length} optional per school, amount scaled by SchoolType)
   GradeYears              ${gradeYears.length}
   Terms                   ${terms.length}
   Exams                   ${exams.length}
   Tests                   ${tests.length}
   Assignments             ${assignments.length}
-  Lessons                 ${lessons.length}  (every subject has a lesson, every teacher is assigned one)
+  Lessons                 ${lessons.length}  (${nonPrimaryLessons.length + primaryLessons.length} timetable + ${secondSubjectLessons.length} second-subject + ${supportLessons.length} support-staff lessons — every one of the ${allStaffs.length} staff teaches at least one lesson, most teach several)
   Guardians               ${guardians.length}
-  Students                ${students.length}  (${nonPrimaryStudents.length} in subject classes + ${primaryStudents.length} in primary classes)
-  Attendance              ${lessons.reduce((n, l) => n + students.filter((s) => s.classId === l.classId).length, 0)}  (every student × every lesson in their own class)
+  Students                ${students.length}  (${nonPrimaryStudents.length} in subject classes + ${primaryStudents.length} in primary classes + ${extraStudents.length} extra students (10/school); each has a studentId + ACTIVE/SUSPENDED status)
+  Attendance              ${lessons.reduce((n, l) => n + students.filter((s) => s.classId === l.classId).length, 0)}  (every student × every lesson in their own class; in every school ≥10% of students sit below 60% attendance and ≥5% below 50%)
   ReportCards             ${students.length}
-  Fees                    ${students.length}
+  Fees                    ${fees.length}  (${compulsoryFeeTemplates.length} compulsory + 1 optional per student, each with paid/outstanding tracked — every 4th student has all compulsory fees fully paid)
   Events                  10
   Announcements           10
 

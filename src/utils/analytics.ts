@@ -1,9 +1,10 @@
-import { ChartJsBarData } from '../types/definitions.js';
+import { ChartJsData } from '../types/definitions.js';
 
-export function toBarChartData(
+export function toChartData(
   items: { label: string; value: number }[],
   datasetLabel: string,
-): ChartJsBarData {
+  borderRadious: number,
+): ChartJsData {
   return {
     labels: items.map((item) => item.label),
     datasets: [
@@ -22,7 +23,7 @@ export function toBarChartData(
           '#84CC16',
           '#F97316',
         ],
-        borderRadius: 7,
+        borderRadius: borderRadious,
       },
     ],
   };

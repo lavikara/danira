@@ -1,9 +1,9 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import { paginatedResource } from '../../services/dbServices/dbServices.js';
 import { createSortWhitelist } from '../../middleware/pagination/pagination.js';
-import { ChartJsBarData } from '../../types/definitions.js';
-import { toBarChartData } from '../../utils/analytics.js';
-import { getAnalyticsData } from '../../services/staffService/staffAnalyticsService.js';
+import { ChartJsData } from '../../types/definitions.js';
+import { toChartData } from '../../utils/analytics.js';
+import { getStaffAnalyticsData } from '../../services/staffService/staffAnalyticsService.js';
 
 const STAFFS_SORTABLE_FIELDS = ['employmentStatus', 'position'] as const;
 const resolveSort = createSortWhitelist(STAFFS_SORTABLE_FIELDS, 'position');
@@ -23,6 +23,7 @@ export const allSingleSchoolStaffs = async (req: Request, res: Response, next: N
   if (search) {
     where.OR = [
       { position: { contains: search, mode: 'insensitive' } },
+      { staffId: { contains: search as string, mode: 'insensitive' } },
       {
         users: {
           OR: [
@@ -51,7 +52,6 @@ export const allSingleSchoolStaffs = async (req: Request, res: Response, next: N
   };
 
   const result = await paginatedResource('staffs', query, 'Fetched all staffs');
-
   if (!result.success) {
     throw new Error('Unable to fetch staffs');
   }
@@ -74,19 +74,19 @@ export const singleSchoolStaffAnalytics = async (
 
   const staffUserWhere: Record<string, any> = { staffs: { schoolId } };
 
-  const [totalStaffs, activeStaffs, staffsOnLeave, ratingAgg, topTeachers] = await getAnalyticsData(
-    staffWhere,
-    staffUserWhere,
-    schoolId as string[],
-    'school',
-  );
+  const [totalStaffs, activeStaffs, staffsOnLeave, ratingAgg, topTeachers] =
+    await getStaffAnalyticsData(staffWhere, staffUserWhere, schoolId as string[], 'school');
 
   const chartItems = topTeachers.map((teacher) => ({
     label: [teacher.firstName, teacher.lastName].filter(Boolean).join(' ') || teacher.staffId,
     value: teacher.studentCount,
   }));
-
-  const topTeachersChart: ChartJsBarData = toBarChartData(chartItems, 'Students Taught');
+  const chartBorderRadious = 7;
+  const topTeachersChart: ChartJsData = toChartData(
+    chartItems,
+    'Students Taught',
+    chartBorderRadious,
+  );
   const timestamp = new Date().toISOString();
 
   res.json({
@@ -186,19 +186,20 @@ export const groupStaffAnalytics = async (req: Request, res: Response, next: Nex
     staffUserWhere.staffs = { school: { group: { id: groupId } } };
   }
 
-  const [totalStaffs, activeStaffs, staffsOnLeave, ratingAgg, topTeachers] = await getAnalyticsData(
-    staffWhere,
-    staffUserWhere,
-    schoolIds,
-    'group',
-  );
+  const [totalStaffs, activeStaffs, staffsOnLeave, ratingAgg, topTeachers] =
+    await getStaffAnalyticsData(staffWhere, staffUserWhere, schoolIds, 'group');
 
   const chartItems = topTeachers.map((teacher) => ({
     label: [teacher.firstName, teacher.lastName].filter(Boolean).join(' ') || teacher.staffId,
     value: teacher.studentCount,
   }));
 
-  const topTeachersChart: ChartJsBarData = toBarChartData(chartItems, 'Students Taught');
+  const chartBorderRadious = 7;
+  const topTeachersChart: ChartJsData = toChartData(
+    chartItems,
+    'Students Taught',
+    chartBorderRadious,
+  );
   const timestamp = new Date().toISOString();
 
   res.json({
