@@ -54,10 +54,11 @@ model SchoolGroups {
 }
 
 model Schools {
-  id              String        @id @default(uuid())
+  id              String          @id @default(uuid())
   type            SchoolType
   setup           SchoolSetup
-  schoolName      String        @unique
+  schoolName      String          @unique
+  regNumber       String?
   address         String
   phoneNumber     String
   country         String
@@ -67,15 +68,17 @@ model Schools {
   isApproved      Boolean
   termsConditions Boolean
   status          SchoolStatus
-  email           String        @unique
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  email           String          @unique
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   staffs          Staffs[]
   students        Students[]
   admins          Admins[]
   departments     Departments[]
+  feeStructures   FeeStructures[]
+  fees            Fees[]
   groupId         String?
-  group           SchoolGroups? @relation(fields: [groupId], references: [id])
+  group           SchoolGroups?   @relation(fields: [groupId], references: [id])
 }
 
 model Departments {
@@ -100,7 +103,7 @@ model Departments {
 
 model Staffs {
   id               String        @id @default(uuid())
-  userId           String        @unique
+  staffId          String?
   position         String
   image            String?
   accomodation     Accomodation?
@@ -110,6 +113,7 @@ model Staffs {
   lessons          Lessons[]
   schoolId         String
   school           Schools       @relation(fields: [schoolId], references: [id])
+  userId           String        @unique
   users            Users         @relation(fields: [userId], references: [id], onDelete: Cascade)
   departmentId     String?
   department       Departments?  @relation("DepartmentStaffs", fields: [departmentId], references: [id])
@@ -118,6 +122,7 @@ model Staffs {
 
 model Students {
   id           String        @id @default(uuid())
+  studentId    String?
   image        String?
   accomodation Accomodation?
   attendances  Attendance[]
@@ -166,6 +171,7 @@ model Classes {
   students      Students[]
   events        Events[]
   announcements Announcements[]
+  fees          Fees[]
   gradeYearId   String?
   gradeYear     GradeYears?     @relation(fields: [gradeYearId], references: [id])
   departmentId  String?
@@ -247,24 +253,25 @@ model Attendance {
 }
 
 model Subjects {
-  id           String        @id @default(uuid())
+  id           String          @id @default(uuid())
   name         String
+  category     SubjectCategory
   description  String?
   code         String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
   status       SubjectStatus
   staffs       Staffs[]
   lessons      Lessons[]
   students     Students[]
   examId       String?
-  exam         Exams?        @relation(fields: [examId], references: [id])
+  exam         Exams?          @relation(fields: [examId], references: [id])
   testId       String?
-  test         Tests?        @relation(fields: [testId], references: [id])
+  test         Tests?          @relation(fields: [testId], references: [id])
   reportCardId String?
-  reportCard   ReportCards?  @relation(fields: [reportCardId], references: [id])
+  reportCard   ReportCards?    @relation(fields: [reportCardId], references: [id])
   departmentId String?
-  department   Departments?  @relation(fields: [departmentId], references: [id])
+  department   Departments?    @relation(fields: [departmentId], references: [id])
 }
 
 model Lessons {
@@ -304,17 +311,55 @@ model ReportCards {
   student         Students?       @relation(fields: [studentId], references: [id])
 }
 
-model Fees {
-  id          String    @id @default(uuid())
+/// A school's own catalog of fee types — the "menu" of compulsory and
+/// optional fees it charges, before any individual student is billed.
+/// Compulsory entries (tuition, library, books, etc.) are expected to be
+/// charged to every student at that school; optional entries (transport,
+/// lunch, etc.) are charged only to students who opt in. `classType` lets a
+/// school scope a fee to a particular class type (e.g. a boarding fee that
+/// only applies to SECONDARY classes) — leave it null for a fee that
+/// applies across all of the school's classes.
+model FeeStructures {
+  id          String      @id @default(uuid())
   name        String
   description String?
-  receipt     String?
+  category    FeeCategory
   amount      Float
-  status      FeeStatus
-  studentId   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  student     Students? @relation(fields: [studentId], references: [id])
+  classType   ClassType?
+  schoolId    String
+  school      Schools     @relation(fields: [schoolId], references: [id])
+  fees        Fees[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([schoolId, name])
+}
+
+/// `paid` + `outstanding` always sum to `amount`. A student's overall fee
+/// payment status is derived, not stored: they count as having "paid" once
+/// every one of their COMPULSORY Fees rows has `status = PAID` (equivalently
+/// `outstanding = 0` on all of them) — OPTIONAL fees don't factor into that
+/// rule.
+model Fees {
+  id             String         @id @default(uuid())
+  name           String
+  description    String?
+  receipt        String?
+  amount         Float
+  paid           Float          @default(0)
+  outstanding    Float          @default(0)
+  category       FeeCategory
+  status         FeeStatus
+  studentId      String?
+  student        Students?      @relation(fields: [studentId], references: [id])
+  schoolId       String
+  school         Schools        @relation(fields: [schoolId], references: [id])
+  classId        String?
+  class          Classes?       @relation(fields: [classId], references: [id])
+  feeStructureId String?
+  feeStructure   FeeStructures? @relation(fields: [feeStructureId], references: [id])
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 }
 
 model Events {
@@ -398,6 +443,16 @@ enum FeeStatus {
   PARTIAL
   PAID
   UNPAID
+}
+
+enum FeeCategory {
+  COMPULSORY
+  OPTIONAL
+}
+
+enum SubjectCategory {
+  COMPULSORY
+  OPTIONAL
 }
 
 enum AnnouncementStatus {
