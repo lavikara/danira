@@ -108,6 +108,7 @@ model Staffs {
   image            String?
   accomodation     Accomodation?
   employmentStatus StaffStatus
+  attendances      Attendance[]
   subjects         Subjects[]
   classes          Classes[]
   lessons          Lessons[]
@@ -122,6 +123,7 @@ model Staffs {
 
 model Students {
   id           String        @id @default(uuid())
+  position     String
   studentId    String?
   image        String?
   accomodation Accomodation?
@@ -168,6 +170,7 @@ model Classes {
   updatedAt     DateTime        @updatedAt
   supervisor    Staffs          @relation(fields: [supervisorId], references: [id])
   lessons       Lessons[]
+  subjects      Subjects[]
   students      Students[]
   events        Events[]
   announcements Announcements[]
@@ -244,12 +247,16 @@ model Attendance {
   date       DateTime
   attendance AttendanceStatus
   status     Duration
+  clockIn    DateTime
+  clockOut   DateTime
   studentId  String
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
   student    Students         @relation(fields: [studentId], references: [id])
   lessonId   String?
   lesson     Lessons?         @relation(fields: [lessonId], references: [id])
+  staffs     Staffs?          @relation(fields: [staffsId], references: [id])
+  staffsId   String?
 }
 
 model Subjects {
@@ -272,6 +279,8 @@ model Subjects {
   reportCard   ReportCards?    @relation(fields: [reportCardId], references: [id])
   departmentId String?
   department   Departments?    @relation(fields: [departmentId], references: [id])
+  classes      Classes?        @relation(fields: [classesId], references: [id])
+  classesId    String?
 }
 
 model Lessons {
@@ -453,6 +462,7 @@ enum FeeCategory {
 enum SubjectCategory {
   COMPULSORY
   OPTIONAL
+  ELECTIVE
 }
 
 enum AnnouncementStatus {

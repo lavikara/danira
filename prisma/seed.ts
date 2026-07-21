@@ -10,6 +10,7 @@ import {
   Accomodation,
   TermType,
   FeeCategory,
+  SubjectCategory,
 } from '../src/generated/client.js';
 import bcrypt from 'bcryptjs';
 import { prismaClient } from '../src/services/dbServices/dbClient/prismaClient.js';
@@ -185,6 +186,53 @@ function personFor(i: number): [string, string, Gender] {
   const lastName = LAST_NAME_POOL[Math.floor(i / FIRST_NAME_POOL.length) % LAST_NAME_POOL.length];
   const gender = i % 2 === 0 ? Gender.MALE : Gender.FEMALE;
   return [firstName, lastName, gender];
+}
+
+/**
+ * Cycle of student positions. Most students are plain 'Student'; a handful
+ * of leadership/prefect titles are sprinkled in deterministically via
+ * `nextStudentPosition()` below, which is called once per student across
+ * every student-creation block (regular, primary, and both "extra" cohorts)
+ * so titles are spread realistically across the whole student body instead
+ * of clustering in any one class or school.
+ */
+const STUDENT_POSITIONS = [
+  'Student',
+  'Student',
+  'Student',
+  'Student',
+  'Class Captain',
+  'Student',
+  'Student',
+  'Assistant Class Captain',
+  'Student',
+  'Student',
+  'Sports Prefect',
+  'Student',
+  'Student',
+  'Library Prefect',
+  'Student',
+  'Student',
+  'Health Prefect',
+  'Student',
+  'Student',
+  'Social Prefect',
+  'Student',
+  'Student',
+  'Labour Prefect',
+  'Student',
+  'Head Boy',
+  'Student',
+  'Student',
+  'Head Girl',
+  'Student',
+  'Student',
+  'Head Prefect',
+  'Student',
+] as const;
+let studentPositionSeq = 0;
+function nextStudentPosition(): string {
+  return STUDENT_POSITIONS[studentPositionSeq++ % STUDENT_POSITIONS.length];
 }
 
 // ─── Clear database (FK-safe order: children first) ─────────────────────────
@@ -844,6 +892,7 @@ async function main(): Promise<void> {
                 name: tpl.name,
                 code: `${tpl.code}-${shortName.slice(0, 3).toUpperCase()}`,
                 status: 'ACTIVE',
+                category: SubjectCategory.COMPULSORY,
                 description: tpl.description,
                 departmentId: department.id,
               },
@@ -922,6 +971,7 @@ async function main(): Promise<void> {
                 name: tpl.name,
                 code: `${tpl.code}-${shortName.slice(0, 3).toUpperCase()}`,
                 status: 'ACTIVE',
+                category: SubjectCategory.COMPULSORY,
                 description: tpl.description,
                 departmentId: department.id,
               },
@@ -1263,6 +1313,36 @@ async function main(): Promise<void> {
     classesBySchoolId.set(school.id, nonPrimaryClasses.slice(si * 2, si * 2 + 2));
   });
 
+  // ── 10b. LINK SUBJECTS → CLASSES ─────────────────────────────────────────
+  //   Subjects.classesId is a single FK (a subject belongs to at most one
+  //   class), so to give every class its own subject list, each school's
+  //   own subjects are distributed round-robin across that school's own
+  //   classes — every class ends up with roughly half its school's
+  //   curriculum directly attached (Classes.subjects), on top of the full
+  //   per-class timetable already covered by Lessons.
+  console.log('🔗  Linking Subjects to Classes …');
+
+  const departmentSchoolId = new Map(departments.map((d) => [d.id, d.schoolId]));
+
+  await Promise.all(
+    schools.map((school) => {
+      const schoolSubjects = subjects.filter(
+        (s) => departmentSchoolId.get(s.departmentId!) === school.id,
+      );
+      const schoolClasses = classesBySchoolId.get(school.id) ?? [];
+      if (schoolClasses.length === 0) return Promise.resolve();
+
+      return Promise.all(
+        schoolSubjects.map((subject, i) =>
+          prismaClient.subjects.update({
+            where: { id: subject.id },
+            data: { classes: { connect: { id: schoolClasses[i % schoolClasses.length].id } } },
+          }),
+        ),
+      );
+    }),
+  );
+
   // ── 11. EXAMS (10) ───────────────────────────────────────────────────────
   console.log('📝  Seeding Exams …');
 
@@ -1592,6 +1672,7 @@ async function main(): Promise<void> {
             const student = await prismaClient.students.create({
               data: {
                 userId: user.id,
+                position: nextStudentPosition(),
                 studentId: `STU-${String(globalIndex + 1).padStart(4, '0')}`,
                 accomodation:
                   globalIndex % 3 === 0 ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
@@ -1643,6 +1724,7 @@ async function main(): Promise<void> {
       const student = await prismaClient.students.create({
         data: {
           userId: user.id,
+          position: nextStudentPosition(),
           studentId: `STU-P-${String(classIdx + 1).padStart(3, '0')}`,
           accomodation: classIdx % 2 === 0 ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
           classId: cls.id,
@@ -1704,6 +1786,7 @@ async function main(): Promise<void> {
             const student = await prismaClient.students.create({
               data: {
                 userId: user.id,
+                position: nextStudentPosition(),
                 studentId: `STU-X-${String(globalIndex + 1).padStart(4, '0')}`,
                 accomodation:
                   globalIndex % 3 === 0 ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
@@ -1758,6 +1841,7 @@ async function main(): Promise<void> {
             const student = await prismaClient.students.create({
               data: {
                 userId: user.id,
+                position: nextStudentPosition(),
                 studentId: `STU-XP-${String(globalIndex + 1).padStart(4, '0')}`,
                 accomodation:
                   globalIndex % 2 === 0 ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
@@ -1837,13 +1921,31 @@ async function main(): Promise<void> {
       // still varying which specific lessons are marked absent per student.
       return classLessons.map((lesson, li) => {
         const shifted = (li + rankInSchool) % classLessons.length;
+        const attendanceDate = daysFromNow(-(li + 1));
+        // clockIn/clockOut are required by the schema — reuse the lesson's
+        // own start/end time-of-day, applied to the attendance date, so
+        // each row still reflects the actual period the lesson ran in.
+        const clockIn = new Date(attendanceDate);
+        clockIn.setHours(lesson.startTime.getHours(), lesson.startTime.getMinutes(), 0, 0);
+        const clockOut = new Date(attendanceDate);
+        clockOut.setHours(lesson.endTime.getHours(), lesson.endTime.getMinutes(), 0, 0);
         return prismaClient.attendance.create({
           data: {
-            date: daysFromNow(-(li + 1)),
+            date: attendanceDate,
             status: 'UPCOMING',
             attendance: shifted < absentTarget ? AttendanceStatus.ABSENT : AttendanceStatus.PRESENT,
+            clockIn,
+            clockOut,
             studentId: student.id,
             lessonId: lesson.id,
+            // Attendance.studentId is a required FK, so a pure "staff-only"
+            // row isn't representable — instead, every one of these
+            // per-student, per-lesson rows is also tagged with the staff
+            // who taught that lesson. Since every staff member (teachers,
+            // primary caregivers, and support staff alike) is assigned at
+            // least one lesson in step 14/14b/14c, this guarantees every
+            // staff row ends up with attendance records via staffsId.
+            staffsId: lesson.staffId,
           },
         });
       });
