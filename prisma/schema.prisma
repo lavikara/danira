@@ -71,6 +71,7 @@ model Schools {
   email           String          @unique
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
+  classes         Classes[]
   staffs          Staffs[]
   students        Students[]
   admins          Admins[]
@@ -179,6 +180,8 @@ model Classes {
   gradeYear     GradeYears?     @relation(fields: [gradeYearId], references: [id])
   departmentId  String?
   department    Departments?    @relation(fields: [departmentId], references: [id])
+  schools       Schools?        @relation(fields: [schoolsId], references: [id])
+  schoolsId     String?
 }
 
 model Assignments {
@@ -359,6 +362,7 @@ model Fees {
   outstanding    Float          @default(0)
   category       FeeCategory
   status         FeeStatus
+  currency       Currency
   studentId      String?
   student        Students?      @relation(fields: [studentId], references: [id])
   schoolId       String
@@ -498,6 +502,17 @@ enum ClassType {
   PRIMARY
   SECONDARY
   TERTIARY
+}
+
+enum Currency {
+  NGN
+  USD
+  KES
+  GBP
+  GHS
+  EUR
+  ZAR
+  CAD
 }
 
 enum Day {
