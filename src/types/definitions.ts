@@ -88,6 +88,7 @@ export type RelationKeys =
   | 'guardians'
   | 'users'
   | 'schools'
+  | 'classes'
   | 'schoolGroups';
 
 export type RelationKeysMap = {
@@ -182,11 +183,15 @@ export interface PageQuery {
 
 export type StudentQuery = Prisma.StudentsFindManyArgs;
 
+export type ClassQuery = Prisma.ClassesFindManyArgs;
+
 export type StaffQuery = Prisma.StaffsFindManyArgs;
 
 export type PaginatedQuery<T> = T & PageQuery;
 
 export type PaginatedStudentQuery = PaginatedQuery<StudentQuery>;
+
+export type PaginatedClassQuery = PaginatedQuery<ClassQuery>;
 
 export type PaginatedStaffQuery = PaginatedQuery<StaffQuery>;
 

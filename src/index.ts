@@ -13,6 +13,7 @@ import daniraRoute from './routes/danira/daniraRouter.js';
 import authRouter from './routes/auth/authRouter.js';
 import userRouter from './routes/user/userRouter.js';
 import schoolRouter from './routes/school/schoolRouter.js';
+import classRouter from './routes/class/classRouter.js';
 import staffRouter from './routes/staff/staffRouter.js';
 import studentRouter from './routes/student/studentRouter.js';
 
@@ -27,6 +28,8 @@ app.use('/danira', daniraRoute);
 app.use('/user', userRouter);
 
 app.use('/school', schoolRouter);
+
+app.use('/class', classRouter);
 
 app.use('/staff', staffRouter);
 

@@ -62,12 +62,10 @@ async function getStudentsByDepartment(
   // Filter shared by both the Departments query and the "unassigned" Students count.
   // Departments and Students both carry a direct schoolId, so 'school' scope applies
   // to either model. For 'group' scope we go through the school relation to groupId.
-  console.log(scopeId);
   const scopeFilter: Record<string, any> =
     scopeType === 'school'
       ? { schoolId: { in: scopeId } }
       : { school: { groupId: { in: scopeId } } };
-  console.log('scopeFilter: ', scopeFilter);
   const [departments, unassignedCount] = await Promise.all([
     prismaClient.departments.findMany({
       where: scopeFilter,

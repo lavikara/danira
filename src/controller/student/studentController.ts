@@ -237,13 +237,9 @@ export const groupStudentAnalytics = async (req: Request, res: Response, next: N
   const { groupId } = req.params;
 
   const studentWhere: Record<string, any> = {};
-  const studentUserWhere: Record<string, any> = {};
-
-  const schoolIds = req.schoolIds as string[];
 
   if (groupId) {
     studentWhere.school = { group: { id: groupId } };
-    studentUserWhere.staffs = { school: { group: { id: groupId } } };
   }
 
   const [

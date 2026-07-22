@@ -71,6 +71,7 @@ model Schools {
   email           String          @unique
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
+  classes         Classes[]
   staffs          Staffs[]
   students        Students[]
   admins          Admins[]
@@ -108,6 +109,7 @@ model Staffs {
   image            String?
   accomodation     Accomodation?
   employmentStatus StaffStatus
+  attendances      Attendance[]
   subjects         Subjects[]
   classes          Classes[]
   lessons          Lessons[]
@@ -122,6 +124,7 @@ model Staffs {
 
 model Students {
   id           String        @id @default(uuid())
+  position     String
   studentId    String?
   image        String?
   accomodation Accomodation?
@@ -168,6 +171,7 @@ model Classes {
   updatedAt     DateTime        @updatedAt
   supervisor    Staffs          @relation(fields: [supervisorId], references: [id])
   lessons       Lessons[]
+  subjects      Subjects[]
   students      Students[]
   events        Events[]
   announcements Announcements[]
@@ -176,6 +180,8 @@ model Classes {
   gradeYear     GradeYears?     @relation(fields: [gradeYearId], references: [id])
   departmentId  String?
   department    Departments?    @relation(fields: [departmentId], references: [id])
+  schools       Schools?        @relation(fields: [schoolsId], references: [id])
+  schoolsId     String?
 }
 
 model Assignments {
@@ -244,12 +250,16 @@ model Attendance {
   date       DateTime
   attendance AttendanceStatus
   status     Duration
+  clockIn    DateTime
+  clockOut   DateTime
   studentId  String
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
   student    Students         @relation(fields: [studentId], references: [id])
   lessonId   String?
   lesson     Lessons?         @relation(fields: [lessonId], references: [id])
+  staffs     Staffs?          @relation(fields: [staffsId], references: [id])
+  staffsId   String?
 }
 
 model Subjects {
@@ -272,6 +282,8 @@ model Subjects {
   reportCard   ReportCards?    @relation(fields: [reportCardId], references: [id])
   departmentId String?
   department   Departments?    @relation(fields: [departmentId], references: [id])
+  classes      Classes?        @relation(fields: [classesId], references: [id])
+  classesId    String?
 }
 
 model Lessons {
@@ -350,6 +362,7 @@ model Fees {
   outstanding    Float          @default(0)
   category       FeeCategory
   status         FeeStatus
+  currency       Currency
   studentId      String?
   student        Students?      @relation(fields: [studentId], references: [id])
   schoolId       String
@@ -453,6 +466,7 @@ enum FeeCategory {
 enum SubjectCategory {
   COMPULSORY
   OPTIONAL
+  ELECTIVE
 }
 
 enum AnnouncementStatus {
@@ -488,6 +502,17 @@ enum ClassType {
   PRIMARY
   SECONDARY
   TERTIARY
+}
+
+enum Currency {
+  NGN
+  USD
+  KES
+  GBP
+  GHS
+  EUR
+  ZAR
+  CAD
 }
 
 enum Day {
