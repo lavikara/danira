@@ -1243,6 +1243,7 @@ async function main(): Promise<void> {
                 supervisorId: supervisor.id,
                 gradeYearId: gradeYears[j % gradeYears.length].id,
                 departmentId: supervisor.departmentId,
+                schoolsId: school.id,
               },
             });
           }),
@@ -1292,6 +1293,7 @@ async function main(): Promise<void> {
                 supervisorId: supervisor.id,
                 gradeYearId: gradeYears[(si + j) % gradeYears.length].id,
                 departmentId: supervisor.departmentId,
+                schoolsId: school.id,
               },
             });
           }),
@@ -2023,6 +2025,7 @@ async function main(): Promise<void> {
           data: {
             name: structure.name,
             description: structure.description,
+            currency: 'NGN',
             amount,
             paid,
             outstanding,
@@ -2053,6 +2056,7 @@ async function main(): Promise<void> {
           amount: optionalAmount,
           paid: optionalSplit.paid,
           outstanding: optionalSplit.outstanding,
+          currency: 'NGN',
           category: FeeCategory.OPTIONAL,
           status: optionalStatus,
           receipt: receiptFor(optionalStatus, optionalSeed),
