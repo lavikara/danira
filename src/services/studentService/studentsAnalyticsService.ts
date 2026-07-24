@@ -59,9 +59,6 @@ async function getStudentsByDepartment(
   scopeType: 'school' | 'group' = 'school',
 ): Promise<StudentsByDepartment[]> {
   if (!scopeId || scopeId.length === 0) return [];
-  // Filter shared by both the Departments query and the "unassigned" Students count.
-  // Departments and Students both carry a direct schoolId, so 'school' scope applies
-  // to either model. For 'group' scope we go through the school relation to groupId.
   const scopeFilter: Record<string, any> =
     scopeType === 'school'
       ? { schoolId: { in: scopeId } }
@@ -75,7 +72,6 @@ async function getStudentsByDepartment(
         _count: { select: { students: true } },
       },
     }),
-    // Students.departmentId is optional, so some students in scope may have no department
     prismaClient.students.count({
       where: { ...scopeFilter, departmentId: null },
     }),
