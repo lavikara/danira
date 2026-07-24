@@ -7,7 +7,10 @@ import { toChartData } from '../../utils/analytics.js';
 
 type FeeStatusSummary = 'PAID' | 'PARTIAL' | 'UNPAID';
 
+const CHART_BORDER_RADIUS = 7;
+
 const STUDENTS_SORTABLE_FIELDS = ['department', 'class'] as const;
+
 const resolveSort = createSortWhitelist(STUDENTS_SORTABLE_FIELDS, 'class', {
   class: (order) => ({ class: { name: order } }),
   department: (order) => ({ department: { name: order } }),
@@ -121,22 +124,22 @@ export const singleSchoolStudentAnalytics = async (
     label: [department.name].filter(Boolean).join(' ') || department.departmentId,
     value: department.studentCount,
   }));
-  const chartBorderRadious = 7;
+
   const studentByDepartmentChart: ChartJsData = toChartData(
     departmentChartItems,
-    'Students in Department',
-    chartBorderRadious,
+    'Students',
+    CHART_BORDER_RADIUS,
   );
 
   const genderChartItems = studentsByGender.map((entry) => ({
     label: entry.gender === 'MALE' ? 'Male' : 'Female',
     value: entry.count,
   }));
-  const pieChartBorderRadious = 0;
+
   const studentByGenderChart: ChartJsData = toChartData(
     genderChartItems,
-    'Students by Gender',
-    pieChartBorderRadious,
+    'Students',
+    CHART_BORDER_RADIUS,
   );
 
   const timestamp = new Date().toISOString();
@@ -255,22 +258,21 @@ export const groupStudentAnalytics = async (req: Request, res: Response, next: N
     label: [department.name].filter(Boolean).join(' ') || department.departmentId,
     value: department.studentCount,
   }));
-  const chartBorderRadious = 7;
+
   const studentByDepartmentChart: ChartJsData = toChartData(
     departmentChartItems,
-    'Students in Department',
-    chartBorderRadious,
+    'Students',
+    CHART_BORDER_RADIUS,
   );
 
   const genderChartItems = studentsByGender.map((entry) => ({
     label: entry.gender === 'MALE' ? 'Male' : 'Female',
     value: entry.count,
   }));
-  const pieChartBorderRadious = 0;
   const studentByGenderChart: ChartJsData = toChartData(
     genderChartItems,
-    'Students by Gender',
-    pieChartBorderRadious,
+    'Students',
+    CHART_BORDER_RADIUS,
   );
 
   const timestamp = new Date().toISOString();

@@ -15,6 +15,7 @@ import userRouter from './routes/user/userRouter.js';
 import schoolRouter from './routes/school/schoolRouter.js';
 import classRouter from './routes/class/classRouter.js';
 import staffRouter from './routes/staff/staffRouter.js';
+import subjectRouter from './routes/subject/subjectRouter.js';
 import studentRouter from './routes/student/studentRouter.js';
 
 app.use(express.json());
@@ -28,6 +29,8 @@ app.use('/danira', daniraRoute);
 app.use('/user', userRouter);
 
 app.use('/school', schoolRouter);
+
+app.use('/subject', subjectRouter);
 
 app.use('/class', classRouter);
 
