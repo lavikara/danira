@@ -6,6 +6,7 @@ import { createSortWhitelist } from '../../middleware/pagination/pagination.js';
 import { paginatedResource } from '../../services/dbServices/dbServices.js';
 
 const CLASSES_SORTABLE_FIELDS = ['population', 'name'] as const;
+
 const resolveSort = createSortWhitelist(CLASSES_SORTABLE_FIELDS, 'name', {
   name: (order) => ({ name: order }),
   population: (order) => ({ population: order }),
@@ -18,12 +19,13 @@ export const allSingleSchoolClass = async (req: Request, res: Response, next: Ne
   const { name, department } = req.query;
   const where: Record<string, any> = {};
 
-  if (schoolId) where.schoolsId = schoolId;
+  if (schoolId) where.schoolId = schoolId;
   if (schoolId && name) where.name = name;
   if (schoolId && department) where.department = { name: department };
 
   if (search) {
     where.OR = [
+      { name: { contains: search as string, mode: 'insensitive' } },
       {
         supervisor: {
           users: {
@@ -34,7 +36,6 @@ export const allSingleSchoolClass = async (req: Request, res: Response, next: Ne
           },
         },
       },
-      { name: { contains: search as string, mode: 'insensitive' } },
     ];
   }
 
@@ -44,13 +45,12 @@ export const allSingleSchoolClass = async (req: Request, res: Response, next: Ne
     limit,
     orderBy: resolveSort(sortBy, order),
     include: {
-      // Supervisor's name
       supervisor: {
         select: {
           users: { select: { firstName: true, lastName: true } },
         },
       },
-      subjects: { select: { name: true } },
+      subjectOfferings: { select: { subject: true } },
       department: { select: { name: true } },
       students: {
         take: 1,
@@ -65,18 +65,17 @@ export const allSingleSchoolClass = async (req: Request, res: Response, next: Ne
   } satisfies PaginatedClassQuery;
 
   const result = await paginatedResource('classes', query, 'Fetched all classes');
-
   if (!result.success) {
     throw new Error('Unable to fetch classes');
   }
 
   // @ts-expect-error - Fix typescript infrence for relations
-  const data = result.data.map(({ students, subjects, ...classItem }) => {
+  const data = result.data.map(({ students, subjectOfferings, ...classItem }) => {
     const compulsoryFees = students[0]?.fees ?? [];
     return {
       ...classItem,
-      subjects,
-      subjectCount: subjects.length,
+      subjectOfferings,
+      subjectCount: subjectOfferings.length,
       compulsoryFeesAmount: {
         amount: compulsoryFees.reduce(
           (sum: number, fee: { amount: number }) => sum + fee.amount,
@@ -101,7 +100,7 @@ export const singleSchoolClassAnalytics = async (
   const { schoolId } = req.params;
 
   const classWhere: Record<string, any> = {};
-  if (schoolId) classWhere.schoolsId = schoolId;
+  if (schoolId) classWhere.schoolId = schoolId;
 
   const {
     totalClasses,
@@ -118,7 +117,7 @@ export const singleSchoolClassAnalytics = async (
   const chartBorderRadious = 7;
   const studentByClassChart: ChartJsData = toChartData(
     classChartItems,
-    'Students in Top 20 Classes',
+    'Students',
     chartBorderRadious,
   );
 
@@ -144,17 +143,27 @@ export const allGroupSchoolClass = async (req: Request, res: Response, next: Nex
 
   const { schoolId, name, department } = req.query;
   const where: Record<string, any> = {
-    schools: { groupId },
+    school: { groupId },
   };
 
-  if (schoolId) where.schoolsId = schoolId;
+  if (schoolId) where.schoolId = schoolId;
   if (name) where.name = name;
   if (department) where.department = { name: department };
 
   if (search) {
     where.OR = [
-      { supervisor: { staffId: { contains: search as string, mode: 'insensitive' } } },
       { name: { contains: search as string, mode: 'insensitive' } },
+      {
+        supervisor: {
+          staffId: { contains: search as string, mode: 'insensitive' },
+          users: {
+            OR: [
+              { firstName: { contains: search, mode: 'insensitive' } },
+              { lastName: { contains: search, mode: 'insensitive' } },
+            ],
+          },
+        },
+      },
     ];
   }
 
@@ -169,7 +178,7 @@ export const allGroupSchoolClass = async (req: Request, res: Response, next: Nex
           users: { select: { firstName: true, lastName: true } },
         },
       },
-      subjects: { select: { name: true } },
+      subjectOfferings: { select: { subject: true } },
       department: { select: { name: true } },
       students: {
         take: 1,
@@ -190,12 +199,12 @@ export const allGroupSchoolClass = async (req: Request, res: Response, next: Nex
   }
 
   // @ts-expect-error - Fix typescript infrence for relations
-  const data = result.data.map(({ students, subjects, ...classItem }) => {
+  const data = result.data.map(({ students, subjectOfferings, ...classItem }) => {
     const compulsoryFees = students[0]?.fees ?? [];
     return {
       ...classItem,
-      subjects,
-      subjectCount: subjects.length,
+      subjectOfferings,
+      subjectCount: subjectOfferings.length,
       compulsoryFeesAmount: {
         amount: compulsoryFees.reduce(
           (sum: number, fee: { amount: number }) => sum + fee.amount,
@@ -216,7 +225,7 @@ export const groupClassAnalytics = async (req: Request, res: Response, next: Nex
   const { groupId } = req.params;
 
   const classWhere: Record<string, any> = {};
-  if (groupId) classWhere.schools = { groupId };
+  if (groupId) classWhere.school = { groupId };
 
   const {
     totalClasses,
@@ -233,7 +242,7 @@ export const groupClassAnalytics = async (req: Request, res: Response, next: Nex
   const chartBorderRadious = 7;
   const studentByClassChart: ChartJsData = toChartData(
     classChartItems,
-    'Students in Top 20 Classes',
+    'Students',
     chartBorderRadious,
   );
 
