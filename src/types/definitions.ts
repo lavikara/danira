@@ -88,6 +88,7 @@ export type RelationKeys =
   | 'guardians'
   | 'users'
   | 'schools'
+  | 'subjects'
   | 'classes'
   | 'schoolGroups';
 
@@ -187,6 +188,8 @@ export type ClassQuery = Prisma.ClassesFindManyArgs;
 
 export type StaffQuery = Prisma.StaffsFindManyArgs;
 
+export type SubjectQuery = Prisma.SubjectsFindManyArgs;
+
 export type PaginatedQuery<T> = T & PageQuery;
 
 export type PaginatedStudentQuery = PaginatedQuery<StudentQuery>;
@@ -195,6 +198,8 @@ export type PaginatedClassQuery = PaginatedQuery<ClassQuery>;
 
 export type PaginatedStaffQuery = PaginatedQuery<StaffQuery>;
 
+export type PaginatedSubjectQuery = PaginatedQuery<SubjectQuery>;
+
 // Infer the actual payload shape from the query args (respects include/select)
 export type PaginatedStudentResult<Q extends StudentQuery = StudentQuery> = PaginatedResult<
   Prisma.StudentsGetPayload<Q>
@@ -202,6 +207,10 @@ export type PaginatedStudentResult<Q extends StudentQuery = StudentQuery> = Pagi
 
 export type PaginatedStaffResult<Q extends StaffQuery = StaffQuery> = PaginatedResult<
   Prisma.StaffsGetPayload<Q>
+>;
+
+export type PaginatedSubjectResult<Q extends SubjectQuery = SubjectQuery> = PaginatedResult<
+  Prisma.SubjectsGetPayload<Q>
 >;
 
 export interface PaginationMeta {
