@@ -4,6 +4,13 @@ const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 
+type OrderDirection = 'desc' | 'asc';
+type SortOrderBy = Record<string, any>;
+type SortResolver<T extends string> = {
+  (requested?: string): T;
+  (requested?: string, order?: OrderDirection): SortOrderBy;
+};
+
 /**
  * Parses ?page, ?limit, ?sortBy, ?order, ?search from the query string,
  * validates/clamps them, and attaches the result to req.pagination.
@@ -43,13 +50,6 @@ export function pagination(req: Request, res: Response, next: NextFunction) {
 
   next();
 }
-
-type OrderDirection = 'asc' | 'desc';
-type SortOrderBy = Record<string, any>;
-type SortResolver<T extends string> = {
-  (requested?: string): T;
-  (requested?: string, order?: OrderDirection): SortOrderBy;
-};
 
 /**
  * Returns a small helper that validates a requested `sortBy` field against
