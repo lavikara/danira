@@ -1,5 +1,5 @@
 import { prismaClient } from './dbClient/prismaClient.js';
-import { paginate } from '../../utils/paginate.js';
+import { paginate, FindManyArgs } from '../../utils/paginate.js';
 import {
   RelationKeys,
   IncludeQuery,
@@ -8,20 +8,31 @@ import {
   AdminToUser,
   FindFirst,
   FindMany,
-  PaginatedStudentQuery,
-  PaginatedSubjectQuery,
-  PaginatedStaffQuery,
   TableColumn,
   UserToRelation,
   UniqueSchoolData,
 } from '../../types/definitions.js';
+import {
+  PaginatableDelegate,
+  PaginatedStudentQuery,
+  PaginatedClassQuery,
+  PaginatedSubjectQuery,
+  PaginatedStaffQuery,
+  PaginatedTimetableQuery,
+} from '../../utils/paginate.js';
 
 export const paginatedResource = async (
   table: RelationKeys,
-  query: PaginatedStudentQuery & PaginatedStaffQuery & PaginatedSubjectQuery,
+  query:
+    | PaginatedTimetableQuery
+    | PaginatedClassQuery
+    | PaginatedStudentQuery
+    | PaginatedStaffQuery
+    | PaginatedSubjectQuery,
   message: string,
 ) => {
-  return await paginate(prismaClient[table], query, message);
+  const delegate = prismaClient[table] as unknown as PaginatableDelegate;
+  return await paginate(delegate, query as Parameters<typeof paginate>[1], message);
 };
 
 export const findUniqueUser = async (
@@ -71,6 +82,7 @@ export const findFirst = async (query: FindFirst) => {
 
   return await prismaClient[query.table].findFirst({
     where: whereClause as any,
+    include: query.include ? query.include : null,
   });
 };
 
