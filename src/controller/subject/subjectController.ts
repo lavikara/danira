@@ -5,7 +5,7 @@ import { ChartJsData } from '../../types/definitions.js';
 import { paginatedResource } from '../../services/dbServices/dbServices.js';
 import { toChartData } from '../../utils/analytics.js';
 import { Staffs } from '../../generated/browser.js';
-import { PaginatedSubjectQuery } from '../../utils/paginate.js';
+import { PaginatedSubjectQuery } from '../../services/paginationService/paginate.js';
 
 const CHART_BORDER_RADIUS = 7;
 

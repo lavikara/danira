@@ -4,7 +4,7 @@ import { ChartJsData } from '../../types/definitions.js';
 import { toChartData } from '../../utils/analytics.js';
 import { createSortWhitelist } from '../../middleware/pagination/pagination.js';
 import { paginatedResource } from '../../services/dbServices/dbServices.js';
-import { PaginatedClassQuery } from '../../utils/paginate.js';
+import { PaginatedClassQuery } from '../../services/paginationService/paginate.js';
 
 const CLASSES_SORTABLE_FIELDS = ['population', 'name'] as const;
 

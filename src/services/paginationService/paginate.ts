@@ -1,5 +1,5 @@
-import { Prisma } from '../generated/client.js';
-import { PaginatedResult } from '../types/definitions.js';
+import { Prisma } from '../../generated/client.js';
+import { PaginatedResult } from '../../types/definitions.js';
 
 export type PaginatableDelegate = {
   findMany: (args: any) => Promise<any[]>;
