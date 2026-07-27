@@ -1,9 +1,10 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import { getClassAnalyticsData } from '../../services/classService/classAnalyticsService.js';
-import { ChartJsData, PaginatedClassQuery } from '../../types/definitions.js';
+import { ChartJsData } from '../../types/definitions.js';
 import { toChartData } from '../../utils/analytics.js';
 import { createSortWhitelist } from '../../middleware/pagination/pagination.js';
 import { paginatedResource } from '../../services/dbServices/dbServices.js';
+import { PaginatedClassQuery } from '../../utils/paginate.js';
 
 const CLASSES_SORTABLE_FIELDS = ['population', 'name'] as const;
 
@@ -69,7 +70,6 @@ export const allSingleSchoolClass = async (req: Request, res: Response, next: Ne
     throw new Error('Unable to fetch classes');
   }
 
-  // @ts-expect-error - Fix typescript infrence for relations
   const data = result.data.map(({ students, subjectOfferings, ...classItem }) => {
     const compulsoryFees = students[0]?.fees ?? [];
     return {
@@ -86,7 +86,6 @@ export const allSingleSchoolClass = async (req: Request, res: Response, next: Ne
     };
   });
 
-  // @ts-expect-error - result.data's inferred type doesn't reflect the reshaped data above
   result.data = data;
 
   res.json(result);
@@ -198,7 +197,6 @@ export const allGroupSchoolClass = async (req: Request, res: Response, next: Nex
     throw new Error('Unable to fetch classes');
   }
 
-  // @ts-expect-error - Fix typescript infrence for relations
   const data = result.data.map(({ students, subjectOfferings, ...classItem }) => {
     const compulsoryFees = students[0]?.fees ?? [];
     return {
@@ -215,7 +213,6 @@ export const allGroupSchoolClass = async (req: Request, res: Response, next: Nex
     };
   });
 
-  // @ts-expect-error - result.data's inferred type doesn't reflect the reshaped data above
   result.data = data;
 
   res.json(result);
