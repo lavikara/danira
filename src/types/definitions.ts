@@ -10,13 +10,13 @@ import {
   SchoolGroups,
   Role,
 } from '../generated/browser.js';
-import { Prisma } from '../generated/client.js';
 
 import {
   SchoolDataInput,
   GroupDataInput,
 } from '../middleware/zodvalidate/schema/school/schoolSchemas.js';
 import { UserDataInput } from '../middleware/zodvalidate/schema/user/userSchema.js';
+import { PaginationQuery } from '../utils/paginate.js';
 
 export interface UserToRelation {
   users: Users & {
@@ -90,6 +90,7 @@ export type RelationKeys =
   | 'schools'
   | 'subjects'
   | 'classes'
+  | 'timetables'
   | 'schoolGroups';
 
 export type RelationKeysMap = {
@@ -119,6 +120,7 @@ export type TableColumnObject = {
 export interface FindFirst {
   table: RelationKeys;
   column: TableColumnObject[];
+  include?: Record<string, any>;
 }
 
 export interface FindMany {
@@ -168,51 +170,6 @@ export interface ChartJsData {
   datasets: ChartDataset[];
 }
 
-export interface PaginationQuery {
-  page: number;
-  limit: number;
-  skip: number;
-  sortBy?: string | undefined;
-  order: 'asc' | 'desc';
-  search?: string | undefined;
-}
-
-export interface PageQuery {
-  page: number;
-  limit: number;
-}
-
-export type StudentQuery = Prisma.StudentsFindManyArgs;
-
-export type ClassQuery = Prisma.ClassesFindManyArgs;
-
-export type StaffQuery = Prisma.StaffsFindManyArgs;
-
-export type SubjectQuery = Prisma.SubjectsFindManyArgs;
-
-export type PaginatedQuery<T> = T & PageQuery;
-
-export type PaginatedStudentQuery = PaginatedQuery<StudentQuery>;
-
-export type PaginatedClassQuery = PaginatedQuery<ClassQuery>;
-
-export type PaginatedStaffQuery = PaginatedQuery<StaffQuery>;
-
-export type PaginatedSubjectQuery = PaginatedQuery<SubjectQuery>;
-
-// Infer the actual payload shape from the query args (respects include/select)
-export type PaginatedStudentResult<Q extends StudentQuery = StudentQuery> = PaginatedResult<
-  Prisma.StudentsGetPayload<Q>
->;
-
-export type PaginatedStaffResult<Q extends StaffQuery = StaffQuery> = PaginatedResult<
-  Prisma.StaffsGetPayload<Q>
->;
-
-export type PaginatedSubjectResult<Q extends SubjectQuery = SubjectQuery> = PaginatedResult<
-  Prisma.SubjectsGetPayload<Q>
->;
-
 export interface PaginationMeta {
   page: number;
   limit: number;
@@ -222,11 +179,11 @@ export interface PaginationMeta {
   hasPrevPage: boolean;
 }
 
-export interface PaginatedResult<T> {
-  data: T[];
+export interface PaginatedResult<TRow> {
+  data: TRow[];
   meta: PaginationMeta;
-  success: boolean;
   timestamp: string;
+  success: true;
   message: string;
 }
 
