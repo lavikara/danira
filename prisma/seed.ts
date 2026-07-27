@@ -2246,11 +2246,25 @@ async function main(): Promise<void> {
         (cls.gradeYearId ? termByGradeYearId.get(cls.gradeYearId) : undefined) ??
         terms[i % terms.length];
 
+      // Classes.schoolId is optional in the schema (String?), but
+      // Timetables.schoolId is required — every class created in step 10
+      // above always sets its own schoolId explicitly, so this should never
+      // actually be missing. Guard it explicitly rather than asserting with
+      // `!`, so a future regression (e.g. a new class-creation path that
+      // forgets schoolId) fails here with a clear, class-specific message
+      // instead of surfacing as an opaque Prisma "must not be null" error.
+      const schoolId = cls.schoolId;
+      if (!schoolId) {
+        throw new Error(
+          `Class "${cls.name}" (${cls.id}) has no schoolId — cannot create its Timetable.`,
+        );
+      }
+
       const timetable = await prismaClient.timetables.create({
         data: {
           name: `${cls.name} Timetable`,
           status: 'ONGOING',
-          schoolId: cls.schoolId!,
+          schoolId,
           classId: cls.id,
           gradeYearId: cls.gradeYearId,
           termId: term.id,

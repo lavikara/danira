@@ -70,13 +70,11 @@ export const allSingleSchoolStaffs = async (req: Request, res: Response, next: N
     throw new Error('Unable to fetch staffs');
   }
 
-  // @ts-expect-error - Fix typescript infrence for relations
   const data = result.data.map(({ lessons, ...staffs }) => ({
     ...staffs,
     lessons: resolveLessons(lessons),
   }));
 
-  // @ts-expect-error - Fix typescript infrence for relations
   result.data = data;
 
   if (result.success) {
@@ -178,13 +176,11 @@ export const allGroupSchoolStaffs = async (req: Request, res: Response, next: Ne
     throw new Error('Unable to fetch group staffs');
   }
 
-  // @ts-expect-error - Fix typescript infrence for relations
   const data = result.data.map(({ lessons, ...staffs }) => ({
     ...staffs,
     lessons: resolveLessons(lessons),
   }));
 
-  // @ts-expect-error - Fix typescript infrence for relations
   result.data = data;
 
   if (result.success) {

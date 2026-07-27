@@ -1,8 +1,9 @@
 import { type Request, type Response, type NextFunction } from 'express';
-import { ChartJsData, PaginatedStudentQuery } from '../../types/definitions.js';
+import { ChartJsData } from '../../types/definitions.js';
 import { createSortWhitelist } from '../../middleware/pagination/pagination.js';
 import { paginatedResource } from '../../services/dbServices/dbServices.js';
 import { getStudentAnalyticsData } from '../../services/studentService/studentsAnalyticsService.js';
+import { PaginatedStudentQuery } from '../../utils/paginate.js';
 import { toChartData } from '../../utils/analytics.js';
 
 type FeeStatusSummary = 'PAID' | 'PARTIAL' | 'UNPAID';
@@ -80,19 +81,12 @@ export const allSingleSchoolStudent = async (req: Request, res: Response, next: 
     throw new Error('Unable to fetch students');
   }
 
-  /**
-   * the include fields of fees and attendances are not infered by typescript
-   * because they are relational fields
-   * TO-DO: fix this issue
-   */
-  // @ts-expect-error - Fix typescript infrence for relations
   const data = result.data.map(({ fees, attendances, ...student }) => ({
     ...student,
     fees: resolveFeeStatus(fees),
     attendances: resolveAttendancePercentage(attendances),
   }));
 
-  // @ts-expect-error - Fix typescript infrence for relations
   result.data = data;
 
   if (result.success) {
@@ -215,19 +209,12 @@ export const allGroupSchoolStudent = async (req: Request, res: Response, next: N
     throw new Error('Unable to fetch students');
   }
 
-  /**
-   * the include fields of fees and attendances are not infered by typescript
-   * because they are relational fields
-   * TO-DO: fix this issue
-   */
-  // @ts-expect-error - Fix typescript infrence for relations
   const data = result.data.map(({ fees, attendances, ...student }) => ({
     ...student,
     fees: resolveFeeStatus(fees),
     attendances: resolveAttendancePercentage(attendances),
   }));
 
-  // @ts-expect-error - Fix typescript infrence for relations
   result.data = data;
 
   if (result.success) {

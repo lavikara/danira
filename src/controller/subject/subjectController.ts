@@ -1,10 +1,11 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import { getSubjectAnalyticsData } from '../../services/subjectService/subjectAnalyticsService.js';
 import { createSortWhitelist } from '../../middleware/pagination/pagination.js';
-import { ChartJsData, PaginatedSubjectQuery } from '../../types/definitions.js';
+import { ChartJsData } from '../../types/definitions.js';
 import { paginatedResource } from '../../services/dbServices/dbServices.js';
 import { toChartData } from '../../utils/analytics.js';
 import { Staffs } from '../../generated/browser.js';
+import { PaginatedSubjectQuery } from '../../utils/paginate.js';
 
 const CHART_BORDER_RADIUS = 7;
 
@@ -105,14 +106,12 @@ export const allSingleSchoolSubject = async (req: Request, res: Response, next: 
   if (!result.success) {
     throw new Error('Unable to fetch students');
   }
-  // @ts-expect-error - Fix typescript infrence for relations
   const data = result.data.map(({ offerings, _count, reportCards, ...subject }) => ({
     ...subject,
     subjectTeacher: parseOfferings(offerings),
     studentClassCount: parseCount(_count),
     averageScore: parseAverageScore(reportCards),
   }));
-  // @ts-expect-error - Fix typescript infrence for relations
   result.data = data;
 
   if (result.success) {
@@ -176,14 +175,12 @@ export const allGroupSchoolSubject = async (req: Request, res: Response, next: N
     throw new Error('Unable to fetch students');
   }
 
-  // @ts-expect-error - Fix typescript infrence for relations
   const data = result.data.map(({ offerings, _count, reportCards, ...subject }) => ({
     ...subject,
     subjectTeacher: parseOfferings(offerings),
     studentClassCount: parseCount(_count),
     averageScore: parseAverageScore(reportCards),
   }));
-  // @ts-expect-error - Fix typescript infrence for relations
   result.data = data;
 
   if (result.success) {
