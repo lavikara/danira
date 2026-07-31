@@ -91,6 +91,8 @@ export type RelationKeys =
   | 'subjects'
   | 'classes'
   | 'timetables'
+  | 'staffAttendance'
+  | 'studentAttendance'
   | 'schoolGroups';
 
 export type RelationKeysMap = {
@@ -161,7 +163,7 @@ interface ChartDataset {
   label: string;
   data: number[];
   backgroundColor?: string | string[];
-  borderColor?: string | string[];
+  borderColor?: string | string[] | undefined;
   borderRadius?: number;
 }
 
