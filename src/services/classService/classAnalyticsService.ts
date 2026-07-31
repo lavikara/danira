@@ -36,8 +36,8 @@ export async function getClassAnalyticsData(
       where: { student: studentClassFilter },
       _avg: { testScore: true, assignmentScore: true, examScore: true },
     }),
-    prismaClient.attendance.count({ where: { student: studentClassFilter } }),
-    prismaClient.attendance.count({
+    prismaClient.studentAttendance.count({ where: { student: studentClassFilter } }),
+    prismaClient.studentAttendance.count({
       where: { student: studentClassFilter, attendance: 'PRESENT' },
     }),
     prismaClient.classes.findMany({
