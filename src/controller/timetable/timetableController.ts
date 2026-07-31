@@ -8,8 +8,6 @@ import { PaginatedTimetableQuery } from '../../services/paginationService/pagina
 
 const TIMETABLE_SORTABLE_FIELDS = ['name', 'class'] as const;
 
-const CHART_BORDER_RADIUS = 7;
-
 const resolveSort = createSortWhitelist(TIMETABLE_SORTABLE_FIELDS, 'name', {
   name: (order) => ({ name: order }),
   class: (order) => ({ class: { name: order } }),
