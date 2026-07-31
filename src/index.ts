@@ -18,6 +18,7 @@ import staffRouter from './routes/staff/staffRouter.js';
 import subjectRouter from './routes/subject/subjectRouter.js';
 import studentRouter from './routes/student/studentRouter.js';
 import timetableRouter from './routes/timetable/timetableRouter.js';
+import attendanceRouter from './routes/attendance/attendanceRouter.js';
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -28,6 +29,8 @@ app.use(pinoHttp({ logger }));
 app.use('/danira', daniraRoute);
 
 app.use('/user', userRouter);
+
+app.use('/attendance', attendanceRouter);
 
 app.use('/school', schoolRouter);
 

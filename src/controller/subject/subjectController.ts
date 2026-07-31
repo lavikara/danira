@@ -4,8 +4,9 @@ import { createSortWhitelist } from '../../middleware/pagination/pagination.js';
 import { ChartJsData } from '../../types/definitions.js';
 import { paginatedResource } from '../../services/dbServices/dbServices.js';
 import { toChartData } from '../../utils/analytics.js';
-import { Staffs } from '../../generated/browser.js';
-import { PaginatedSubjectQuery } from '../../utils/paginate.js';
+// import { Subjects } from '../../generated/browser.js';
+import { Prisma } from '../../generated/client.js';
+import { PaginatedSubjectQuery } from '../../services/paginationService/paginate.js';
 
 const CHART_BORDER_RADIUS = 7;
 
@@ -17,12 +18,11 @@ const resolveSort = createSortWhitelist(SUBJECTS_SORTABLE_FIELDS, 'name', {
   category: (order) => ({ category: order }),
 });
 
-function parseOfferings(records: Staffs[]): string[] {
+function parseOfferings(records: Record<string, any>[]): string[] {
   const seenIds = new Set<string>();
   const names: string[] = [];
 
   for (const record of records) {
-    // @ts-expect-error - Fix typescript infrence for relations
     const { id, users } = record.staff;
 
     if (!seenIds.has(id)) {
@@ -99,7 +99,7 @@ export const allSingleSchoolSubject = async (req: Request, res: Response, next: 
       },
       _count: { select: { offerings: true, students: true } },
     },
-  } satisfies PaginatedSubjectQuery;
+  };
 
   const result = await paginatedResource('subjects', query, 'Fetched all subjects');
 

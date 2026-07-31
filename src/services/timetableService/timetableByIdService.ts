@@ -9,7 +9,41 @@ export const queryTimetableById = async (
     table: 'timetables' as RelationKeys,
     column: [{ id: timetableId, schoolId }],
     include: {
-      periods: true,
+      periods: {
+        select: {
+          id: true,
+          name: true,
+          day: true,
+          startTime: true,
+          endTime: true,
+          periodType: true,
+          lesson: {
+            select: {
+              id: true,
+              name: true,
+              day: true,
+              status: true,
+              startTime: true,
+              endTime: true,
+              subject: {
+                select: { id: true, name: true, code: true, category: true },
+              },
+              staff: {
+                select: {
+                  id: true,
+                  position: true,
+                  users: {
+                    select: { firstName: true, lastName: true, email: true },
+                  },
+                },
+              },
+              class: {
+                select: { id: true, name: true },
+              },
+            },
+          },
+        },
+      },
       class: true,
       gradeYear: true,
       term: true,

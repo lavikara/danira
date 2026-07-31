@@ -1,5 +1,5 @@
-import { Prisma } from '../generated/client.js';
-import { PaginatedResult } from '../types/definitions.js';
+import { Prisma } from '../../generated/client.js';
+import { PaginatedResult } from '../../types/definitions.js';
 
 export type PaginatableDelegate = {
   findMany: (args: any) => Promise<any[]>;
@@ -38,6 +38,10 @@ export type SubjectQuery = Prisma.SubjectsFindManyArgs;
 
 export type TimetableQuery = Prisma.TimetablesFindManyArgs;
 
+export type StaffAttendanceQuery = Prisma.StaffAttendanceFindManyArgs;
+
+export type StudentAttendanceQuery = Prisma.StudentAttendanceFindManyArgs;
+
 export type PaginatedQuery<T> = T & PageQuery;
 
 export type PaginatedStudentQuery = PaginatedQuery<StudentQuery>;
@@ -49,6 +53,10 @@ export type PaginatedStaffQuery = PaginatedQuery<StaffQuery>;
 export type PaginatedSubjectQuery = PaginatedQuery<SubjectQuery>;
 
 export type PaginatedTimetableQuery = PaginatedQuery<TimetableQuery>;
+
+export type PaginatedStaffAttendanceQuery = PaginatedQuery<StaffAttendanceQuery>;
+
+export type PaginatedStudentAttendanceQuery = PaginatedQuery<StudentAttendanceQuery>;
 
 /**
  * Generic offset-based pagination for any Prisma model delegate
@@ -74,7 +82,6 @@ export async function paginate<D extends PaginatableDelegate>(
     take: limit,
   };
   if (orderBy) findArgs.orderBy = orderBy;
-  // select and include are mutually exclusive in Prisma — only pass one.
   if (select) {
     findArgs.select = select;
   } else if (include) {

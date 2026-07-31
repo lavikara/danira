@@ -32,6 +32,12 @@ export interface SubjectAnalyticsResult {
 export async function getSubjectAnalyticsData(
   subjectWhere: Prisma.SubjectsWhereInput,
 ): Promise<SubjectAnalyticsResult> {
+  const departmentGroupsArgs = {
+    by: ['departmentId'],
+    where: subjectWhere,
+    _count: { _all: true },
+  } satisfies Prisma.SubjectsGroupByArgs;
+
   const [
     totalSubjects,
     coreSubjects,
@@ -43,16 +49,12 @@ export async function getSubjectAnalyticsData(
     prismaClient.subjects.count({ where: subjectWhere }),
     prismaClient.subjects.count({ where: { ...subjectWhere, category: 'CORE' } }),
     prismaClient.subjects.count({ where: { ...subjectWhere, category: 'ELECTIVE' } }),
-    prismaClient.subjects.count({ where: { ...subjectWhere, category: 'CORE_ELECTIVE' } }),
+    prismaClient.subjects.count({ where: { ...subjectWhere, category: 'CO_CURRICULAR' } }),
     prismaClient.subjects.findMany({
       where: subjectWhere,
       select: { code: true, _count: { select: { students: true } } },
     }),
-    prismaClient.subjects.groupBy({
-      by: ['departmentId'],
-      where: subjectWhere,
-      _count: { _all: true },
-    }),
+    prismaClient.subjects.groupBy(departmentGroupsArgs),
   ]);
 
   const studentsByName = new Map<string, number>();
@@ -68,7 +70,6 @@ export async function getSubjectAnalyticsData(
     .slice(0, 20);
 
   const departmentIds = departmentGroups
-    // @ts-expect-error - Fix typescript infrence for relations
     .map((group) => group.departmentId)
     .filter((id): id is string => id !== null);
 
@@ -84,14 +85,10 @@ export async function getSubjectAnalyticsData(
 
   const subjectsByDepartment = departmentGroups
     .map((group) => ({
-      // @ts-expect-error - Fix typescript infrence for relations
       departmentId: group.departmentId,
-      // @ts-expect-error - Fix typescript infrence for relations
       departmentName: group.departmentId
-        ? // @ts-expect-error - Fix typescript infrence for relations
-          (departmentNameById.get(group.departmentId) ?? 'Unknown')
+        ? (departmentNameById.get(group.departmentId) ?? 'Unknown')
         : 'Unassigned',
-      // @ts-expect-error - Fix typescript infrence for relations
       count: group._count._all,
     }))
     .sort((a, b) => b.count - a.count);

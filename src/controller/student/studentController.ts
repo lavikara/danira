@@ -3,7 +3,7 @@ import { ChartJsData } from '../../types/definitions.js';
 import { createSortWhitelist } from '../../middleware/pagination/pagination.js';
 import { paginatedResource } from '../../services/dbServices/dbServices.js';
 import { getStudentAnalyticsData } from '../../services/studentService/studentsAnalyticsService.js';
-import { PaginatedStudentQuery } from '../../utils/paginate.js';
+import { PaginatedStudentQuery } from '../../services/paginationService/paginate.js';
 import { toChartData } from '../../utils/analytics.js';
 
 type FeeStatusSummary = 'PAID' | 'PARTIAL' | 'UNPAID';

@@ -16,7 +16,7 @@ import {
   GroupDataInput,
 } from '../middleware/zodvalidate/schema/school/schoolSchemas.js';
 import { UserDataInput } from '../middleware/zodvalidate/schema/user/userSchema.js';
-import { PaginationQuery } from '../utils/paginate.js';
+import { PaginationQuery } from '../services/paginationService/paginate.js';
 
 export interface UserToRelation {
   users: Users & {
@@ -91,6 +91,8 @@ export type RelationKeys =
   | 'subjects'
   | 'classes'
   | 'timetables'
+  | 'staffAttendance'
+  | 'studentAttendance'
   | 'schoolGroups';
 
 export type RelationKeysMap = {
@@ -161,7 +163,7 @@ interface ChartDataset {
   label: string;
   data: number[];
   backgroundColor?: string | string[];
-  borderColor?: string | string[];
+  borderColor?: string | string[] | undefined;
   borderRadius?: number;
 }
 

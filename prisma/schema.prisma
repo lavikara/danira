@@ -54,35 +54,37 @@ model SchoolGroups {
 }
 
 model Schools {
-  id              String          @id @default(uuid())
-  type            SchoolType
-  setup           SchoolSetup
-  schoolName      String          @unique
-  regNumber       String?
-  address         String
-  phoneNumber     String
-  country         String
-  state           String
-  createdBy       String?
-  approvedBy      String?
-  isApproved      Boolean
-  termsConditions Boolean
-  status          SchoolStatus
-  email           String          @unique
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  classes         Classes[]
-  staffs          Staffs[]
-  students        Students[]
-  admins          Admins[]
-  departments     Departments[]
-  subjects        Subjects[]
-  feeStructures   FeeStructures[]
-  fees            Fees[]
-  receipts        Receipt[]
-  timetables      Timetables[]
-  groupId         String?
-  group           SchoolGroups?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  id                 String              @id @default(uuid())
+  type               SchoolType
+  setup              SchoolSetup
+  schoolName         String              @unique
+  regNumber          String?
+  address            String
+  phoneNumber        String
+  country            String
+  state              String
+  createdBy          String?
+  approvedBy         String?
+  isApproved         Boolean
+  termsConditions    Boolean
+  status             SchoolStatus
+  email              String              @unique
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  classes            Classes[]
+  staffs             Staffs[]
+  students           Students[]
+  admins             Admins[]
+  departments        Departments[]
+  subjects           Subjects[]
+  feeStructures      FeeStructures[]
+  fees               Fees[]
+  receipts           Receipt[]
+  timetables         Timetables[]
+  groupId            String?
+  group              SchoolGroups?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  studentAttendances StudentAttendance[]
+  staffAttendances   StaffAttendance[]
 }
 
 model Departments {
@@ -106,55 +108,56 @@ model Departments {
 }
 
 model Staffs {
-  id               String          @id @default(uuid())
-  staffId          String?
-  position         String
-  image            String?
-  accomodation     Accomodation?
-  employmentStatus StaffStatus
-  attendances      Attendance[]
-  subjectOfferings ClassSubjects[]
-  classes          Classes[]
-  lessons          Lessons[]
-  receiptsIssued   Receipt[]
-  schoolId         String
-  school           Schools         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  userId           String          @unique
-  users            Users           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  departmentId     String?
-  department       Departments?    @relation("DepartmentStaffs", fields: [departmentId], references: [id], onDelete: SetNull)
-  headOfDepartment Departments?    @relation("DepartmentHead")
+  id                String             @id @default(uuid())
+  staffId           String?
+  position          String
+  image             String?
+  accomodation      Accomodation?
+  employmentStatus  StaffStatus
+  subjectOfferings  ClassSubjects[]
+  classes           Classes[]
+  lessons           Lessons[]
+  receiptsIssued    Receipt[]
+  schoolId          String
+  school            Schools            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  userId            String             @unique
+  users             Users              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  departmentId      String?
+  department        Departments?       @relation("DepartmentStaffs", fields: [departmentId], references: [id], onDelete: SetNull)
+  headOfDepartment  Departments?       @relation("DepartmentHead")
+  staffAttendances  StaffAttendance[]
+  lessonAttendances LessonAttendance[]
 }
 
 model Students {
-  id           String        @id @default(uuid())
+  id           String              @id @default(uuid())
   position     String
   studentId    String?
   image        String?
   accomodation Accomodation?
-  attendances  Attendance[]
+  attendances  StudentAttendance[]
   reportCard   ReportCards[]
   fees         Fees[]
   receipts     Receipt[]
   classId      String
-  class        Classes       @relation(fields: [classId], references: [id], onDelete: Restrict)
+  class        Classes             @relation(fields: [classId], references: [id], onDelete: Restrict)
   guardianId   String
-  guardian     Guardians     @relation(fields: [guardianId], references: [id], onDelete: Restrict)
+  guardian     Guardians           @relation(fields: [guardianId], references: [id], onDelete: Restrict)
   schoolId     String?
-  school       Schools?      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school       Schools?            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   gradeYearId  String?
-  gradeYear    GradeYears?   @relation(fields: [gradeYearId], references: [id], onDelete: SetNull)
+  gradeYear    GradeYears?         @relation(fields: [gradeYearId], references: [id], onDelete: SetNull)
   examId       String?
-  exam         Exams?        @relation(fields: [examId], references: [id], onDelete: SetNull)
+  exam         Exams?              @relation(fields: [examId], references: [id], onDelete: SetNull)
   testId       String?
-  test         Tests?        @relation(fields: [testId], references: [id], onDelete: SetNull)
+  test         Tests?              @relation(fields: [testId], references: [id], onDelete: SetNull)
   assignmentId String?
-  assignment   Assignments?  @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  assignment   Assignments?        @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
   subjects     Subjects[]
   departmentId String?
-  department   Departments?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  userId       String        @unique
-  users        Users         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department   Departments?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  userId       String              @unique
+  users        Users               @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Guardians {
@@ -295,21 +298,67 @@ model Terms {
   timetables  Timetables[]
 }
 
-model Attendance {
+/// A student's attendance for the school day generally (lessonId null) or for a
+/// specific lesson occurrence (lessonId set). clockIn/clockOut are optional since
+/// an ABSENT record has no real timestamps to capture.
+model StudentAttendance {
   id         String           @id @default(uuid())
-  date       DateTime
+  date       DateTime         @db.Date
   attendance AttendanceStatus
-  status     Duration
-  clockIn    DateTime
-  clockOut   DateTime
-  studentId  String
+  clockIn    DateTime?
+  clockOut   DateTime?
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
+  schoolId   String
+  school     Schools          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId  String
   student    Students         @relation(fields: [studentId], references: [id], onDelete: Cascade)
   lessonId   String?
   lesson     Lessons?         @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  staffs     Staffs?          @relation(fields: [staffsId], references: [id], onDelete: SetNull)
-  staffsId   String?
+
+  @@unique([studentId, lessonId, date])
+  @@index([schoolId, date])
+}
+
+/// A staff member's daily attendance at the school — clocking in on arrival and
+/// clocking out on departure. One row per staff member per day.
+model StaffAttendance {
+  id        String           @id @default(uuid())
+  date      DateTime         @db.Date
+  status    AttendanceStatus
+  clockIn   DateTime?
+  clockOut  DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  schoolId  String
+  school    Schools          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  staffId   String
+  staff     Staffs           @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, date])
+  @@index([schoolId, date])
+}
+
+/// A teaching staff member's clock-in/out for a specific lesson occurrence.
+/// Distinct from StaffAttendance (whole school day) — a teacher present at
+/// school all day can still be late to, or miss, an individual period. staffId
+/// is kept explicit (rather than inferred from lesson.staffId) so substitute
+/// teachers can log attendance for a lesson they're covering.
+model LessonAttendance {
+  id        String           @id @default(uuid())
+  date      DateTime         @db.Date
+  status    AttendanceStatus
+  clockIn   DateTime?
+  clockOut  DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  lessonId  String
+  lesson    Lessons          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  staffId   String
+  staff     Staffs           @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, staffId, date])
+  @@index([staffId, date])
 }
 
 /// Subject master data — one row per subject per school (e.g. "Mathematics" at
@@ -361,27 +410,28 @@ model ClassSubjects {
 }
 
 model Lessons {
-  id               String             @id @default(uuid())
-  name             String             @unique
-  description      String?
-  day              Day
-  status           Duration
-  startTime        DateTime
-  endTime          DateTime
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  attendances      Attendance[]
-  subject          Subjects           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  subjectId        String
-  class            Classes            @relation(fields: [classId], references: [id], onDelete: Cascade)
-  classId          String
-  staff            Staffs             @relation(fields: [staffId], references: [id], onDelete: Restrict)
-  staffId          String
-  classSubjectId   String?
-  classSubject     ClassSubjects?     @relation(fields: [classSubjectId], references: [id], onDelete: SetNull)
-  assignmentId     String?
-  assignment       Assignments?       @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
-  timetablePeriods TimetablePeriods[]
+  id                 String              @id @default(uuid())
+  name               String              @unique
+  description        String?
+  day                Day
+  status             Duration
+  startTime          DateTime
+  endTime            DateTime
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  studentAttendances StudentAttendance[]
+  lessonAttendances  LessonAttendance[]
+  subject            Subjects            @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectId          String
+  class              Classes             @relation(fields: [classId], references: [id], onDelete: Cascade)
+  classId            String
+  staff              Staffs              @relation(fields: [staffId], references: [id], onDelete: Restrict)
+  staffId            String
+  classSubjectId     String?
+  classSubject       ClassSubjects?      @relation(fields: [classSubjectId], references: [id], onDelete: SetNull)
+  assignmentId       String?
+  assignment         Assignments?        @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  timetablePeriods   TimetablePeriods[]
 }
 
 model ReportCards {
@@ -583,6 +633,8 @@ enum StaffStatus {
 enum AttendanceStatus {
   PRESENT
   ABSENT
+  LATE
+  LEAVE
 }
 
 enum ClassType {
@@ -599,6 +651,7 @@ enum PaymentMethod {
 
 enum PeriodType {
   TEACHING
+  LECTURE
   STUDY
   BREAK
   BREAKFAST
@@ -653,6 +706,8 @@ enum TermType {
   FIRSTTERM
   SECONDTERM
   THIRDTERM
+  FIRSTSEMESTER
+  SECONDSEMESTER
 }
 
 enum DepartmentStatus {

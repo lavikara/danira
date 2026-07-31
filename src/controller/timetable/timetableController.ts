@@ -4,11 +4,9 @@ import { createSortWhitelist } from '../../middleware/pagination/pagination.js';
 import { SuccessResponse, ApiError } from '../../utils/apiResponse.js';
 import { paginatedResource } from '../../services/dbServices/dbServices.js';
 import { queryTimetableById } from '../../services/timetableService/timetableByIdService.js';
-import { PaginatedTimetableQuery } from '../../utils/paginate.js';
+import { PaginatedTimetableQuery } from '../../services/paginationService/paginate.js';
 
 const TIMETABLE_SORTABLE_FIELDS = ['name', 'class'] as const;
-
-const CHART_BORDER_RADIUS = 7;
 
 const resolveSort = createSortWhitelist(TIMETABLE_SORTABLE_FIELDS, 'name', {
   name: (order) => ({ name: order }),
