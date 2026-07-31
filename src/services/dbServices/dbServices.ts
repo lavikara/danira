@@ -19,15 +19,19 @@ import {
   PaginatedSubjectQuery,
   PaginatedStaffQuery,
   PaginatedTimetableQuery,
+  PaginatedStudentAttendanceQuery,
+  PaginatedStaffAttendanceQuery,
 } from '../paginationService/paginate.js';
 
 export const paginatedResource = async (
   table: RelationKeys,
   query:
+    | PaginatedStaffAttendanceQuery
     | PaginatedTimetableQuery
     | PaginatedClassQuery
     | PaginatedStudentQuery
     | PaginatedStaffQuery
+    | PaginatedStudentAttendanceQuery
     | PaginatedSubjectQuery,
   message: string,
 ) => {
