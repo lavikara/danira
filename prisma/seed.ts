@@ -37,6 +37,52 @@ function daysFromNow(days: number): Date {
   return d;
 }
 
+/** Maps the Day enum to JS's Date.getDay() weekday numbering (0 = Sunday). */
+const DAY_TO_JS_WEEKDAY: Record<Day, number> = {
+  [Day.SUNDAY]: 0,
+  [Day.MONDAY]: 1,
+  [Day.TUESDAY]: 2,
+  [Day.WEDNESDAY]: 3,
+  [Day.THURSDAY]: 4,
+  [Day.FRIDAY]: 5,
+  [Day.SATURDAY]: 6,
+};
+
+/**
+ * Returns the date of the n-th most recent occurrence of `day` before today
+ * (n=1 → the most recent one, n=2 → the one before that, etc.). This is what
+ * keeps a lesson's seeded attendance date landing on the same weekday the
+ * lesson is actually scheduled for — a MONDAY lesson never ends up with a
+ * Saturday (or any non-Monday) attendance record.
+ */
+function lastOccurrenceOf(day: Day, n: number): Date {
+  const targetWeekday = DAY_TO_JS_WEEKDAY[day];
+  const d = new Date();
+  let count = 0;
+  while (count < n) {
+    d.setDate(d.getDate() - 1);
+    if (d.getDay() === targetWeekday) count++;
+  }
+  return d;
+}
+
+/**
+ * Returns the date of the n-th most recent weekday (Mon–Fri) before today.
+ * Used for staff daily school attendance, which — unlike lesson attendance —
+ * isn't tied to one specific weekday but should still never land on a
+ * weekend the school isn't in session.
+ */
+function schoolDaysAgo(n: number): Date {
+  const d = new Date();
+  let remaining = n;
+  while (remaining > 0) {
+    d.setDate(d.getDate() - 1);
+    const weekday = d.getDay();
+    if (weekday !== 0 && weekday !== 6) remaining--;
+  }
+  return d;
+}
+
 /** A consistent phone number pattern — 11 digits, Nigerian-style. */
 function phone(seed: number): string {
   return `0${String(800_000_0000 + seed).slice(0, 10)}`;
@@ -260,7 +306,9 @@ function nextStudentPosition(): string {
 async function clearDatabase(): Promise<void> {
   await prismaClient.timetablePeriods.deleteMany();
   await prismaClient.timetables.deleteMany();
-  await prismaClient.attendance.deleteMany();
+  await prismaClient.studentAttendance.deleteMany();
+  await prismaClient.staffAttendance.deleteMany();
+  await prismaClient.lessonAttendance.deleteMany();
   await prismaClient.reportCards.deleteMany();
   await prismaClient.fees.deleteMany();
   await prismaClient.receipt.deleteMany();
@@ -1965,15 +2013,24 @@ async function main(): Promise<void> {
   const students = [...nonPrimaryStudents, ...primaryStudents, ...extraStudents];
 
   // ── 17. ATTENDANCE ───────────────────────────────────────────────────────
-  //   Every student — primary and non-primary alike — gets an Attendance
-  //   record for EVERY lesson taught in their own class (their full
-  //   timetable, including the second-subject and support-staff lessons
-  //   added above). Attendance is deliberately uneven per student: within
+  //   Attendance is split across three purpose-built tables, matching the
+  //   updated schema:
+  //     • StudentAttendance — a student's attendance for a specific lesson
+  //       in their own class (unchanged in spirit from the previous model).
+  //     • StaffAttendance   — a staff member's daily clock-in/out at the
+  //       school itself, independent of any particular lesson.
+  //     • LessonAttendance  — the teaching staff member's clock-in/out for
+  //       each lesson they teach (or cover as a substitute).
+  //   Student attendance stays deliberately uneven per student: within
   //   EVERY school, at least 5% of students are placed in a "very poor"
   //   tier (below 50% present) and at least 10% are below 60% present
   //   overall (the very-poor group counts toward that 10%); everyone else
-  //   gets a solid, varied attendance rate.
-  console.log('✅  Seeding Attendance …');
+  //   gets a solid, varied attendance rate. Every lesson's attendance date
+  //   is computed once (by that lesson's position within its own class's
+  //   timetable) and reused for both its StudentAttendance rows and its
+  //   LessonAttendance row, so a lesson's date is always consistent no
+  //   matter which table references it.
+  console.log('✅  Seeding StudentAttendance …');
 
   const studentsBySchoolId = new Map<string, typeof students>();
   students.forEach((student) => {
@@ -1981,6 +2038,23 @@ async function main(): Promise<void> {
     const list = studentsBySchoolId.get(schoolId) ?? [];
     list.push(student);
     studentsBySchoolId.set(schoolId, list);
+  });
+
+  const lessonsByClassIdForAttendance = new Map<string, typeof lessons>();
+  lessons.forEach((lesson) => {
+    const list = lessonsByClassIdForAttendance.get(lesson.classId) ?? [];
+    list.push(lesson);
+    lessonsByClassIdForAttendance.set(lesson.classId, list);
+  });
+
+  // Every lesson's attendance date, keyed by that lesson's own position
+  // within its class's lesson list — computed once so StudentAttendance and
+  // LessonAttendance rows for the same lesson always agree on the date.
+  const lessonAttendanceDate = new Map<string, Date>();
+  lessonsByClassIdForAttendance.forEach((classLessons) => {
+    classLessons.forEach((lesson, li) => {
+      lessonAttendanceDate.set(lesson.id, lastOccurrenceOf(lesson.day, li + 1));
+    });
   });
 
   /**
@@ -2003,14 +2077,14 @@ async function main(): Promise<void> {
     return 0.75 + (normalRank % 7) * 0.033; // 75% – 94.8% present
   }
 
-  await Promise.all(
+  const studentAttendanceRecords = await Promise.all(
     students.flatMap((student) => {
       const schoolId = student.schoolId!;
       const schoolStudents = studentsBySchoolId.get(schoolId) ?? [student];
       const rankInSchool = schoolStudents.findIndex((s) => s.id === student.id);
       const presentRate = presentRateFor(rankInSchool, schoolStudents.length);
 
-      const classLessons = lessons.filter((l) => l.classId === student.classId);
+      const classLessons = lessonsByClassIdForAttendance.get(student.classId) ?? [];
       const absentTarget = Math.round(classLessons.length * (1 - presentRate));
 
       // A cyclic shift of a fixed "N absent / rest present" mask — this is
@@ -2019,33 +2093,120 @@ async function main(): Promise<void> {
       // still varying which specific lessons are marked absent per student.
       return classLessons.map((lesson, li) => {
         const shifted = (li + rankInSchool) % classLessons.length;
-        const attendanceDate = daysFromNow(-(li + 1));
-        // clockIn/clockOut are required by the schema — reuse the lesson's
-        // own start/end time-of-day, applied to the attendance date, so
-        // each row still reflects the actual period the lesson ran in.
-        const clockIn = new Date(attendanceDate);
-        clockIn.setHours(lesson.startTime.getHours(), lesson.startTime.getMinutes(), 0, 0);
-        const clockOut = new Date(attendanceDate);
-        clockOut.setHours(lesson.endTime.getHours(), lesson.endTime.getMinutes(), 0, 0);
-        return prismaClient.attendance.create({
+        const isPresent = shifted >= absentTarget;
+        const attendanceDate = lessonAttendanceDate.get(lesson.id)!;
+
+        // clockIn/clockOut are optional now — an ABSENT record has no real
+        // timestamps, so only a PRESENT row gets them, reusing the lesson's
+        // own start/end time-of-day applied to the attendance date.
+        let clockIn: Date | null = null;
+        let clockOut: Date | null = null;
+        if (isPresent) {
+          clockIn = new Date(attendanceDate);
+          clockIn.setHours(lesson.startTime.getHours(), lesson.startTime.getMinutes(), 0, 0);
+          clockOut = new Date(attendanceDate);
+          clockOut.setHours(lesson.endTime.getHours(), lesson.endTime.getMinutes(), 0, 0);
+        }
+
+        return prismaClient.studentAttendance.create({
           data: {
             date: attendanceDate,
-            status: 'UPCOMING',
-            attendance: shifted < absentTarget ? AttendanceStatus.ABSENT : AttendanceStatus.PRESENT,
+            attendance: isPresent ? AttendanceStatus.PRESENT : AttendanceStatus.ABSENT,
             clockIn,
             clockOut,
             studentId: student.id,
             lessonId: lesson.id,
-            // Attendance.studentId is a required FK, so a pure "staff-only"
-            // row isn't representable — instead, every one of these
-            // per-student, per-lesson rows is also tagged with the staff
-            // who taught that lesson. Since every staff member (teachers,
-            // primary caregivers, and support staff alike) is assigned at
-            // least one lesson in step 14/14b/14c, this guarantees every
-            // staff row ends up with attendance records via staffsId.
-            staffsId: lesson.staffId,
+            schoolId,
           },
         });
+      });
+    }),
+  );
+
+  // ── 17b. STAFF ATTENDANCE (daily school clock-in/out) ────────────────────
+  //   Every staff member — teachers, primary caregivers, and extra support
+  //   staff alike — clocks in and out of the school itself for each of the
+  //   last STAFF_ATTENDANCE_DAYS school days, independent of any lesson.
+  console.log('🕗  Seeding StaffAttendance …');
+
+  const STAFF_ATTENDANCE_DAYS = 10;
+
+  /** Deterministic PRESENT/LATE/ABSENT cycle, reused for both daily and
+   *  per-lesson staff attendance so both stay varied but predictable. */
+  function staffAttendanceStatusFor(seed: number): AttendanceStatus {
+    const cycle = [
+      AttendanceStatus.PRESENT,
+      AttendanceStatus.PRESENT,
+      AttendanceStatus.PRESENT,
+      AttendanceStatus.LATE,
+      AttendanceStatus.PRESENT,
+      AttendanceStatus.ABSENT,
+    ] as const;
+    return cycle[seed % cycle.length];
+  }
+
+  const staffAttendanceRecords = await Promise.all(
+    allStaffs.flatMap((staff, si) =>
+      Array.from({ length: STAFF_ATTENDANCE_DAYS }, (_, d) => {
+        const seed = si * STAFF_ATTENDANCE_DAYS + d;
+        const status = staffAttendanceStatusFor(seed);
+        const date = schoolDaysAgo(d + 1);
+
+        let clockIn: Date | null = null;
+        let clockOut: Date | null = null;
+        if (status !== AttendanceStatus.ABSENT) {
+          const lateMinutes = status === AttendanceStatus.LATE ? 20 + (seed % 20) : seed % 10;
+          clockIn = new Date(date);
+          clockIn.setHours(7, 30 + lateMinutes, 0, 0);
+          clockOut = new Date(date);
+          clockOut.setHours(16, 0, 0, 0);
+        }
+
+        return prismaClient.staffAttendance.create({
+          data: {
+            date,
+            status,
+            clockIn,
+            clockOut,
+            schoolId: staff.schoolId,
+            staffId: staff.id,
+          },
+        });
+      }),
+    ),
+  );
+
+  // ── 17c. LESSON ATTENDANCE (per-lesson teaching clock-in/out) ────────────
+  //   Every Lesson gets exactly one LessonAttendance row for the staff
+  //   member assigned to teach it, reusing the same attendanceDate computed
+  //   above for that lesson's StudentAttendance rows.
+  console.log('📔  Seeding LessonAttendance …');
+
+  const lessonAttendanceRecords = await Promise.all(
+    lessons.map((lesson, li) => {
+      const date = lessonAttendanceDate.get(lesson.id)!;
+      // Offset the seed so a lesson's teaching-attendance status doesn't
+      // just mirror that same staff member's daily StaffAttendance cycle.
+      const status = staffAttendanceStatusFor(li + 3);
+
+      let clockIn: Date | null = null;
+      let clockOut: Date | null = null;
+      if (status !== AttendanceStatus.ABSENT) {
+        clockIn = new Date(date);
+        clockIn.setHours(lesson.startTime.getHours(), lesson.startTime.getMinutes(), 0, 0);
+        clockOut = new Date(date);
+        clockOut.setHours(lesson.endTime.getHours(), lesson.endTime.getMinutes(), 0, 0);
+      }
+
+      return prismaClient.lessonAttendance.create({
+        data: {
+          date,
+          status,
+          clockIn,
+          clockOut,
+          lessonId: lesson.id,
+          staffId: lesson.staffId,
+        },
       });
     }),
   );
@@ -2388,7 +2549,9 @@ async function main(): Promise<void> {
   Lessons                 ${lessons.length}  (${nonPrimaryLessons.length + primaryLessons.length} timetable + ${secondSubjectLessons.length} second-subject + ${supportLessons.length} support-staff lessons — every one of the ${allStaffs.length} staff teaches at least one lesson, most teach several)
   Guardians               ${guardians.length}
   Students                ${students.length}  (${nonPrimaryStudents.length} in subject classes + ${primaryStudents.length} in primary classes + ${extraStudents.length} extra students (10/school); each has a studentId + ACTIVE/SUSPENDED status)
-  Attendance              ${lessons.reduce((n, l) => n + students.filter((s) => s.classId === l.classId).length, 0)}  (every student × every lesson in their own class; in every school ≥10% of students sit below 60% attendance and ≥5% below 50%)
+  StudentAttendance       ${studentAttendanceRecords.length}  (every student × every lesson in their own class; in every school ≥10% of students sit below 60% attendance and ≥5% below 50%)
+  StaffAttendance         ${staffAttendanceRecords.length}  (every staff member × last ${STAFF_ATTENDANCE_DAYS} school days, clocking in/out of the school itself)
+  LessonAttendance        ${lessonAttendanceRecords.length}  (one per Lesson, clocked by the staff member assigned to teach it)
   ReportCards             ${students.length}
   Fees                    ${fees.length}  (${compulsoryFeeTemplates.length} compulsory + 1 optional per student, each with paid/outstanding tracked — every 4th student has all compulsory fees fully paid)
   Receipts                ${receiptsCreated}  (one per PAID/PARTIAL fee, tagged with student, school, payment method, and the school's own Bursar)
