@@ -31,17 +31,6 @@ export async function getStaffAnalyticsData(
   ]);
 }
 
-/**
- * Workload = number of distinct students a staff member teaches, derived
- * from Lessons (staffId + classId), not Classes.supervisorId — a teacher
- * can teach several classes without being the supervisor of any of them.
- *
- * Two queries total, regardless of how many staff/classes exist:
- *   1. distinct (staffId, classId) pairs from Lessons
- *   2. student counts grouped by classId for just those classes
- * Everything else is combined in memory.
- */
-
 async function getTopTeachersByWorkload(
   scopeId?: string[],
   scopeType: 'school' | 'group' = 'school',

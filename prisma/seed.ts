@@ -48,40 +48,48 @@ const DAY_TO_JS_WEEKDAY: Record<Day, number> = {
   [Day.SATURDAY]: 6,
 };
 
-/**
- * Returns the date of the n-th most recent occurrence of `day` before today
- * (n=1 → the most recent one, n=2 → the one before that, etc.). This is what
- * keeps a lesson's seeded attendance date landing on the same weekday the
- * lesson is actually scheduled for — a MONDAY lesson never ends up with a
- * Saturday (or any non-Monday) attendance record.
- */
-function lastOccurrenceOf(day: Day, n: number): Date {
-  const targetWeekday = DAY_TO_JS_WEEKDAY[day];
-  const d = new Date();
-  let count = 0;
-  while (count < n) {
-    d.setDate(d.getDate() - 1);
-    if (d.getDay() === targetWeekday) count++;
-  }
-  return d;
+// ─── 3-month window (previous / current / next month relative to "today") ──
+// Every timeline-bearing table (Notifications, StudentAttendance,
+// StaffAttendance, LessonAttendance, Exams, Tests, Assignments) is seeded to
+// span this window, e.g. if today is in July: June (previous), July
+// (current), August (next).
+const TODAY = new Date();
+const CURRENT_MONTH_INDEX = TODAY.getMonth();
+const CURRENT_YEAR = TODAY.getFullYear();
+const WINDOW_START = new Date(CURRENT_YEAR, CURRENT_MONTH_INDEX - 1, 1); // 1st of previous month
+const WINDOW_END = new Date(CURRENT_YEAR, CURRENT_MONTH_INDEX + 2, 0); // last day of next month
+
+/** Builds a Date safely within the 3-month window: monthOffset -1|0|1, clamped day. */
+function monthOffsetDate(monthOffset: -1 | 0 | 1, day: number, hour = 9, minute = 0): Date {
+  const safeDay = Math.min(Math.max(day, 1), 27); // avoids month-rollover surprises
+  return new Date(CURRENT_YEAR, CURRENT_MONTH_INDEX + monthOffset, safeDay, hour, minute, 0);
 }
 
-/**
- * Returns the date of the n-th most recent weekday (Mon–Fri) before today.
- * Used for staff daily school attendance, which — unlike lesson attendance —
- * isn't tied to one specific weekday but should still never land on a
- * weekend the school isn't in session.
- */
-function schoolDaysAgo(n: number): Date {
-  const d = new Date();
-  let remaining = n;
-  while (remaining > 0) {
-    d.setDate(d.getDate() - 1);
+/** All weekday (Mon–Fri) dates between WINDOW_START and WINDOW_END, inclusive. */
+function schoolDayDatesInRange(start: Date, end: Date): Date[] {
+  const dates: Date[] = [];
+  const d = new Date(start);
+  while (d <= end) {
     const weekday = d.getDay();
-    if (weekday !== 0 && weekday !== 6) remaining--;
+    if (weekday !== 0 && weekday !== 6) dates.push(new Date(d));
+    d.setDate(d.getDate() + 1);
   }
-  return d;
+  return dates;
 }
+
+/** All occurrences of a given Day-of-week between start and end, inclusive. */
+function weekdayDatesInRange(day: Day, start: Date, end: Date): Date[] {
+  const targetWeekday = DAY_TO_JS_WEEKDAY[day];
+  const dates: Date[] = [];
+  const d = new Date(start);
+  while (d <= end) {
+    if (d.getDay() === targetWeekday) dates.push(new Date(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return dates;
+}
+
+const SCHOOL_DAYS_IN_WINDOW = schoolDayDatesInRange(WINDOW_START, WINDOW_END);
 
 /** A consistent phone number pattern — 11 digits, Nigerian-style. */
 function phone(seed: number): string {
@@ -304,6 +312,8 @@ function nextStudentPosition(): string {
 // ─── Clear database (FK-safe order: children first) ─────────────────────────
 
 async function clearDatabase(): Promise<void> {
+  await prismaClient.notificationRecipients.deleteMany();
+  await prismaClient.notifications.deleteMany();
   await prismaClient.timetablePeriods.deleteMany();
   await prismaClient.timetables.deleteMany();
   await prismaClient.studentAttendance.deleteMany();
@@ -367,31 +377,58 @@ async function main(): Promise<void> {
     ),
   );
 
-  // ── 2. TERMS (10) ────────────────────────────────────────────────────────
+  // ── 2. TERMS (20 = 2 per GradeYear) ──────────────────────────────────────
+  //   Each GradeYear now gets a completed PREVIOUS term (ENDED, last month)
+  //   and an ONGOING current term (this month → next month). This is what
+  //   lets Fees be billed — and outstanding balances tracked — per term,
+  //   e.g. a student resuming for the current term while still owing fees
+  //   from the previous one.
   console.log('📆  Seeding Terms …');
 
   const termCycle = [TermType.FIRSTTERM, TermType.SECONDTERM, TermType.THIRDTERM];
-  const termDateRanges = [
-    { start: '2025-09-08', end: '2025-12-13' },
-    { start: '2026-01-12', end: '2026-04-03' },
-    { start: '2026-04-27', end: '2026-07-18' },
-  ];
 
-  const terms = await Promise.all(
-    Array.from({ length: 10 }, (_, i) => {
-      const typeIndex = i % 3;
-      return prismaClient.terms.create({
-        data: {
-          name: `${termCycle[typeIndex].replace('TERM', ' Term')} ${2025 + Math.floor(i / 3)}`,
-          type: termCycle[typeIndex],
-          status: 'STARTED',
-          start: new Date(termDateRanges[typeIndex].start),
-          end: new Date(termDateRanges[typeIndex].end),
-          gradeYearId: gradeYears[i % gradeYears.length].id,
-        },
-      });
-    }),
-  );
+  const terms = (
+    await Promise.all(
+      gradeYears.map(async (gradeYear, i) => {
+        const previousTypeIndex = i % 3;
+        const currentTypeIndex = (i + 1) % 3;
+        const sessionYear = 2025 + Math.floor(i / 3);
+
+        const previousTerm = await prismaClient.terms.create({
+          data: {
+            name: `${termCycle[previousTypeIndex].replace('TERM', ' Term')} ${sessionYear} (Previous)`,
+            type: termCycle[previousTypeIndex],
+            status: 'ENDED',
+            start: monthOffsetDate(-1, 1),
+            end: monthOffsetDate(-1, 27),
+            gradeYearId: gradeYear.id,
+          },
+        });
+
+        const currentTerm = await prismaClient.terms.create({
+          data: {
+            name: `${termCycle[currentTypeIndex].replace('TERM', ' Term')} ${sessionYear}`,
+            type: termCycle[currentTypeIndex],
+            status: 'ONGOING',
+            start: monthOffsetDate(0, 1),
+            end: monthOffsetDate(1, 27),
+            gradeYearId: gradeYear.id,
+          },
+        });
+
+        return [previousTerm, currentTerm];
+      }),
+    )
+  ).flat();
+
+  /** Each GradeYear's completed term — the one fees may still be outstanding from. */
+  const previousTermByGradeYearId = new Map<string, (typeof terms)[number]>();
+  /** Each GradeYear's ongoing term — the one being actively billed/timetabled. */
+  const currentTermByGradeYearId = new Map<string, (typeof terms)[number]>();
+  gradeYears.forEach((gradeYear, i) => {
+    previousTermByGradeYearId.set(gradeYear.id, terms[i * 2]);
+    currentTermByGradeYearId.set(gradeYear.id, terms[i * 2 + 1]);
+  });
 
   // ── 3. SCHOOL GROUPS (10) ────────────────────────────────────────────────
   console.log('🏫  Seeding SchoolGroups …');
@@ -522,15 +559,6 @@ async function main(): Promise<void> {
   const schoolShortNameById = new Map(schools.map((s, i) => [s.id, schoolDefs[i].shortName]));
 
   // ── 4b. FEE STRUCTURES (90) ──────────────────────────────────────────────
-  //   Every school gets its own catalog of fee types, split into:
-  //     • COMPULSORY (5) — Tuition, Library, Books & Stationery,
-  //       Development Levy, Examination Fee. Charged to every student.
-  //     • OPTIONAL (4)   — Transportation (school bus), Lunch,
-  //       Extracurricular Activities, Boarding. Charged only to students
-  //       who opt in.
-  //   Base amounts scale by SchoolType (primary < secondary < tertiary), so
-  //   a school's own class type drives what it charges — 10 schools ×
-  //   9 fee types = 90 FeeStructures rows.
   console.log('💵  Seeding FeeStructures …');
 
   const compulsoryFeeTemplates = [
@@ -588,38 +616,37 @@ async function main(): Promise<void> {
     await Promise.all(
       schools.map((school) =>
         Promise.all([
-          ...compulsoryFeeTemplates.map((tpl) =>
-            prismaClient.feeStructures.create({
+          ...compulsoryFeeTemplates.map((tpl) => {
+            const classType = schoolTypeToClassType(school.type);
+            return prismaClient.feeStructures.create({
               data: {
                 name: tpl.name,
                 description: tpl.description,
                 category: FeeCategory.COMPULSORY,
-                amount: tpl.base[school.type],
-                classType: schoolTypeToClassType(school.type),
+                amount: tpl.base[classType],
+                classType,
                 schoolId: school.id,
               },
-            }),
-          ),
-          ...optionalFeeTemplates.map((tpl) =>
-            prismaClient.feeStructures.create({
+            });
+          }),
+          ...optionalFeeTemplates.map((tpl) => {
+            const classType = schoolTypeToClassType(school.type);
+            return prismaClient.feeStructures.create({
               data: {
                 name: tpl.name,
                 description: tpl.description,
                 category: FeeCategory.OPTIONAL,
-                amount: tpl.base[school.type],
-                classType: schoolTypeToClassType(school.type),
+                amount: tpl.base[classType],
+                classType,
                 schoolId: school.id,
               },
-            }),
-          ),
+            });
+          }),
         ]),
       ),
     )
   ).flat(2);
 
-  // Per-school lookup of that school's own compulsory / optional catalog,
-  // used later to bill each student against fees that actually belong to
-  // their own school.
   const feeStructuresBySchoolId = new Map<
     string,
     { compulsory: typeof feeStructures; optional: typeof feeStructures }
@@ -633,12 +660,6 @@ async function main(): Promise<void> {
   });
 
   // ── 5. DEPARTMENTS (46) ──────────────────────────────────────────────────
-  //   Primary schools: Creche, Preschool, Junior, Advance      (4 each)
-  //   Secondary/tertiary schools: Sciences, Humanities,
-  //     Business, Language, Mathematics                        (5 each)
-  //   4 primary schools × 4  +  6 non-primary schools × 5  =  46 rows.
-  //   headId is patched in once Staffs exist (step 9) — Departments.headId
-  //   ↔ Staffs.departmentId is a circular relationship.
   console.log('🏢  Seeding Departments …');
 
   const PRIMARY_DEPARTMENT_NAMES = ['Creche', 'Preschool', 'Junior', 'Advance'] as const;
@@ -678,12 +699,6 @@ async function main(): Promise<void> {
   const primarySchools = schools.filter((s) => s.type === SchoolType.PRIMARY);
 
   // ── 6. ADMINS + USERS ────────────────────────────────────────────────────
-  //
-  //   • 1  SUPERADMIN        — kuku@yopmail.com
-  //   • 1  DANIRAADMIN       — platform-level admin
-  //   • 2  GROUPSCHOOLADMIN  — one per group
-  //   • 10 SCHOOLADMIN       — one dedicated admin per school
-  //
   console.log('👤  Seeding Admins …');
 
   const superAdmin = await prismaClient.users.create({
@@ -811,7 +826,7 @@ async function main(): Promise<void> {
     ['Obinna', 'Nwosu', Gender.MALE],
   ];
 
-  await Promise.all(
+  const schoolAdmins = await Promise.all(
     schools.map(async (school, i) => {
       const [firstName, lastName, gender] = schoolAdminNames[i];
       const username = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.schooladmin${i + 1}`;
@@ -833,7 +848,7 @@ async function main(): Promise<void> {
           ratings: rating(300 + i),
         },
       });
-      return prismaClient.admins.create({
+      const admin = await prismaClient.admins.create({
         data: {
           userId: user.id,
           type: SchoolSetup.SINGLE,
@@ -842,21 +857,11 @@ async function main(): Promise<void> {
           groupId: null,
         },
       });
+      return { user, admin, schoolId: school.id };
     }),
   );
 
   // ── 7. SUBJECTS (104) ────────────────────────────────────────────────────
-  //   Non-primary schools: each of the 6 gets its OWN full curriculum of
-  //   `subjectTemplates.length` academic subjects, correctly placed under
-  //   that school's own subject-area department.
-  //   Primary schools: each of the 4 gets its OWN early-years curriculum of
-  //   8 subjects, placed under that school's own Creche/Preschool/Junior/
-  //   Advance department — so every school, not just the secondary/
-  //   tertiary ones, actually has subjects.
-  //   Subjects has a compound @@unique([schoolId, name]) — not a plain
-  //   unique on name — so subject names can repeat across schools as long
-  //   as schoolId is set, which is required (and now explicitly provided
-  //   below).
   console.log('📚  Seeding Subjects …');
 
   const subjectTemplates = [
@@ -978,9 +983,6 @@ async function main(): Promise<void> {
     )
   ).flat();
 
-  // Two subjects per primary department (Creche/Preschool/Junior/Advance),
-  // covering an age-appropriate early-years curriculum instead of academic
-  // subjects like Physics/Economics.
   const primarySubjectTemplates = [
     {
       name: 'Sensory Play',
@@ -1061,20 +1063,6 @@ async function main(): Promise<void> {
   const subjects = [...nonPrimarySubjects, ...primarySubjects];
 
   // ── 8. STAFFS + USERS (120) ──────────────────────────────────────────────
-  //
-  //   104 teachers — exactly one per subject (72 non-primary + 32 primary),
-  //   guaranteeing every subject at every school — primary included — has
-  //   its own dedicated teacher. Plus 16 supplementary, non-subject staff —
-  //   one caregiver per primary-school department (Creche/Preschool/Junior/
-  //   Advance) — for early-years pastoral care alongside the subject
-  //   teachers.
-  //
-  //   Staffs has no direct `subjects` relation in the schema — a staff
-  //   member's subject(s) are expressed through ClassSubjects (and
-  //   Lessons), which are seeded in step 14d below once every Lesson (and
-  //   therefore every real class/subject/staff combination) is known.
-  //   `teacherRecords` still tracks each teacher's primary + secondary
-  //   subject in memory so later steps (Lessons, ClassSubjects) can use it.
   console.log('👩‍🏫  Seeding Staffs …');
 
   const teacherPositions = [
@@ -1090,12 +1078,6 @@ async function main(): Promise<void> {
     'Head of Department',
   ];
 
-  // 8a. One teacher per subject (covers non-primary AND primary subjects),
-  //   plus — since every department now has at least 2 subjects — a second
-  //   subject from that same department, so every teacher teaches multiple
-  //   subjects. `teacherRecords` keeps the (staff, subject, secondarySubject)
-  //   pairing around so step 14c can give each teacher a lesson for their
-  //   second subject too, without having to re-derive it.
   const teacherRecords = await Promise.all(
     subjects.map(async (subject, i) => {
       const department = departments.find((d) => d.id === subject.departmentId)!;
@@ -1144,7 +1126,6 @@ async function main(): Promise<void> {
 
   const teacherStaffs = teacherRecords.map((r) => r.staff);
 
-  // 8b. One supplementary, non-subject caregiver per primary-school department.
   const primaryDepartments = departments.filter((d) =>
     (PRIMARY_DEPARTMENT_NAMES as readonly string[]).includes(d.name),
   );
@@ -1193,10 +1174,6 @@ async function main(): Promise<void> {
   const staffs = [...teacherStaffs, ...primaryStaffs];
 
   // ── 9. ASSIGN DEPARTMENT HEADS ───────────────────────────────────────────
-  //   Every one of the 46 departments has at least one staff member by this
-  //   point (subject-area departments have their teachers, primary
-  //   departments have their dedicated staff member), so every department
-  //   gets a head.
   console.log('🎓  Assigning Department heads …');
 
   await Promise.all(
@@ -1211,11 +1188,6 @@ async function main(): Promise<void> {
   );
 
   // ── 9b. EXTRA SUPPORT STAFF (10 per school = 100) ────────────────────────
-  //   Every school — primary and non-primary alike — gets 10 additional
-  //   non-subject support staff (librarian, nurse, bursar, etc.), each a
-  //   full User + Staffs row attached to one of that school's own
-  //   departments, so they carry the same relation data as the original
-  //   teaching staff (school, department, staffId, employment details).
   console.log('👥  Seeding extra support Staffs …');
 
   const EXTRA_STAFF_PER_SCHOOL = 10;
@@ -1290,12 +1262,6 @@ async function main(): Promise<void> {
   const allStaffs = [...staffs, ...extraStaffs];
 
   // ── 10. CLASSES (20) ─────────────────────────────────────────────────────
-  //   Every school gets its own classes, not a shared generic pool:
-  //     • 4 primary schools  × 2 classes, supervised by that school's own
-  //       primary-department staff (Creche/Preschool/Junior/Advance)
-  //     • 6 non-primary schools × 2 classes, supervised by that school's
-  //       own teachers — this is what lets every school's own subjects get
-  //       lessons in step 14.
   console.log('🏫  Seeding Classes …');
 
   const primaryClassDefs = [
@@ -1344,10 +1310,6 @@ async function main(): Promise<void> {
     ],
   };
 
-  // schoolTeachers[si] = the 12 teachers (and their 12 subjects, index-aligned)
-  // that belong to nonPrimarySchools[si] — see step 7/8, where both `subjects`
-  // and `teacherStaffs` were built via `nonPrimarySchools.map(...)`, so a
-  // 12-item slice at the same offset always belongs to the same school.
   const nonPrimaryClasses = (
     await Promise.all(
       nonPrimarySchools.map((school, si) => {
@@ -1382,9 +1344,6 @@ async function main(): Promise<void> {
 
   const classes = [...primaryClasses, ...nonPrimaryClasses];
 
-  // Lookup of each school's own classes, keyed by schoolId — used later to
-  // give primary-dept caregivers and extra support staff a class to teach
-  // in without having to re-derive school/class relationships from scratch.
   const classesBySchoolId = new Map<string, typeof classes>();
   primarySchools.forEach((school, si) => {
     classesBySchoolId.set(school.id, primaryClasses.slice(si * 2, si * 2 + 2));
@@ -1393,65 +1352,120 @@ async function main(): Promise<void> {
     classesBySchoolId.set(school.id, nonPrimaryClasses.slice(si * 2, si * 2 + 2));
   });
 
-  // ── 11. EXAMS (10) ───────────────────────────────────────────────────────
+  // ── 11. EXAMS (12, spread across previous/current/next month) ───────────
   console.log('📝  Seeding Exams …');
 
+  const examWindowPlan: Array<{
+    monthOffset: -1 | 0 | 1;
+    status: 'ENDED' | 'ONGOING' | 'STARTED' | 'UPCOMING';
+    day: number;
+  }> = [
+    { monthOffset: -1, status: 'ENDED', day: 8 },
+    { monthOffset: -1, status: 'ENDED', day: 15 },
+    { monthOffset: -1, status: 'ENDED', day: 22 },
+    { monthOffset: -1, status: 'ENDED', day: 26 },
+    { monthOffset: 0, status: 'ONGOING', day: 10 },
+    { monthOffset: 0, status: 'ONGOING', day: 17 },
+    { monthOffset: 0, status: 'STARTED', day: 20 },
+    { monthOffset: 0, status: 'STARTED', day: 24 },
+    { monthOffset: 1, status: 'UPCOMING', day: 6 },
+    { monthOffset: 1, status: 'UPCOMING', day: 13 },
+    { monthOffset: 1, status: 'UPCOMING', day: 20 },
+    { monthOffset: 1, status: 'UPCOMING', day: 27 },
+  ];
+
+  const examPeriodLabel = { '-1': 'Previous', '0': 'Current', '1': 'Upcoming' } as const;
+
   const exams = await Promise.all(
-    Array.from({ length: 10 }, (_, i) =>
+    examWindowPlan.map((plan, i) =>
       prismaClient.exams.create({
         data: {
-          title: `${subjects[i % subjects.length].name} — End of Term Exam`,
-          status: 'UPCOMING',
-          startTime: daysFromNow(30 + i * 2),
-          endTime: daysFromNow(30 + i * 2 + 1),
+          title: `${subjects[i % subjects.length].name} — ${examPeriodLabel[String(plan.monthOffset) as '-1' | '0' | '1']} Term Exam`,
+          status: plan.status,
+          startTime: monthOffsetDate(plan.monthOffset, plan.day, 9, 0),
+          endTime: monthOffsetDate(plan.monthOffset, plan.day, 11, 0),
         },
       }),
     ),
   );
 
-  // ── 12. TESTS (10) ────────────────────────────────────────────────────────
+  /** Ended exams from last month — used to give every student "previous exam" info. */
+  const previousExams = exams.filter((_, i) => examWindowPlan[i].monthOffset === -1);
+  /** Upcoming exams next month — used to give every student "upcoming exam" info. */
+  const upcomingExams = exams.filter((_, i) => examWindowPlan[i].monthOffset === 1);
+
+  // ── 12. TESTS (12, spread across previous/current/next month) ───────────
   console.log('📋  Seeding Tests …');
 
+  const testWindowPlan: Array<{
+    monthOffset: -1 | 0 | 1;
+    status: 'ENDED' | 'ONGOING' | 'STARTED' | 'UPCOMING';
+    day: number;
+  }> = [
+    { monthOffset: -1, status: 'ENDED', day: 5 },
+    { monthOffset: -1, status: 'ENDED', day: 12 },
+    { monthOffset: -1, status: 'ENDED', day: 19 },
+    { monthOffset: -1, status: 'ENDED', day: 25 },
+    { monthOffset: 0, status: 'ONGOING', day: 4 },
+    { monthOffset: 0, status: 'ONGOING', day: 11 },
+    { monthOffset: 0, status: 'STARTED', day: 18 },
+    { monthOffset: 0, status: 'STARTED', day: 23 },
+    { monthOffset: 1, status: 'UPCOMING', day: 3 },
+    { monthOffset: 1, status: 'UPCOMING', day: 9 },
+    { monthOffset: 1, status: 'UPCOMING', day: 16 },
+    { monthOffset: 1, status: 'UPCOMING', day: 24 },
+  ];
+
   const tests = await Promise.all(
-    Array.from({ length: 10 }, (_, i) =>
+    testWindowPlan.map((plan, i) =>
       prismaClient.tests.create({
         data: {
           title: `${subjects[i % subjects.length].name} — Mid-Term Test`,
-          status: 'UPCOMING',
-          startTime: daysFromNow(10 + i * 2),
-          endTime: daysFromNow(10 + i * 2 + 1),
+          status: plan.status,
+          startTime: monthOffsetDate(plan.monthOffset, plan.day, 9, 0),
+          endTime: monthOffsetDate(plan.monthOffset, plan.day, 10, 0),
         },
       }),
     ),
   );
 
-  // ── 13. ASSIGNMENTS (10) ──────────────────────────────────────────────────
+  // ── 13. ASSIGNMENTS (12, spread across previous/current/next month) ─────
   console.log('📄  Seeding Assignments …');
 
+  const assignmentWindowPlan: Array<{
+    monthOffset: -1 | 0 | 1;
+    status: 'ENDED' | 'ONGOING' | 'STARTED' | 'UPCOMING';
+    startDay: number;
+    dueDay: number;
+  }> = [
+    { monthOffset: -1, status: 'ENDED', startDay: 3, dueDay: 10 },
+    { monthOffset: -1, status: 'ENDED', startDay: 9, dueDay: 16 },
+    { monthOffset: -1, status: 'ENDED', startDay: 15, dueDay: 22 },
+    { monthOffset: -1, status: 'ENDED', startDay: 20, dueDay: 27 },
+    { monthOffset: 0, status: 'ONGOING', startDay: 2, dueDay: 9 },
+    { monthOffset: 0, status: 'ONGOING', startDay: 8, dueDay: 15 },
+    { monthOffset: 0, status: 'STARTED', startDay: 14, dueDay: 21 },
+    { monthOffset: 0, status: 'STARTED', startDay: 20, dueDay: 27 },
+    { monthOffset: 1, status: 'UPCOMING', startDay: 1, dueDay: 8 },
+    { monthOffset: 1, status: 'UPCOMING', startDay: 7, dueDay: 14 },
+    { monthOffset: 1, status: 'UPCOMING', startDay: 13, dueDay: 20 },
+    { monthOffset: 1, status: 'UPCOMING', startDay: 19, dueDay: 26 },
+  ];
+
   const assignments = await Promise.all(
-    Array.from({ length: 10 }, (_, i) =>
+    assignmentWindowPlan.map((plan, i) =>
       prismaClient.assignments.create({
         data: {
           title: `${subjects[i % subjects.length].name} — Assignment ${i + 1}`,
-          status: 'UPCOMING',
-          startTime: daysFromNow(i),
-          dueDate: daysFromNow(i + 7),
+          status: plan.status,
+          startTime: monthOffsetDate(plan.monthOffset, plan.startDay, 8, 0),
+          dueDate: monthOffsetDate(plan.monthOffset, plan.dueDay, 23, 59),
         },
       }),
     ),
   );
 
   // ── 14. LESSONS (208) ─────────────────────────────────────────────────────
-  //   Non-primary: a lesson for each of a school's 12 subjects in each of
-  //   its 2 classes, taught by that exact subject's teacher.
-  //     6 schools × 2 classes × 12 subjects = 144 lessons.
-  //   Primary: same idea, scaled to the 8-subject early-years curriculum.
-  //     4 schools × 2 classes × 8 subjects = 64 lessons.
-  //   Both are spread across the week in distinct day/period slots so a
-  //   class never has two subjects scheduled at the same time. Together
-  //   this guarantees every subject (104) has a lesson, every teacher (104)
-  //   is assigned to teach, and every school's own timetable — primary
-  //   included — is fully populated.
   console.log('🗓️   Seeding Lessons …');
 
   const days = [Day.MONDAY, Day.TUESDAY, Day.WEDNESDAY, Day.THURSDAY, Day.FRIDAY];
@@ -1468,14 +1482,12 @@ async function main(): Promise<void> {
           (si + 1) * subjectTemplates.length,
         );
         const schoolClasses = nonPrimaryClasses.slice(si * 2, si * 2 + 2);
-        const periodsPerDay = Math.ceil(schoolSubjects.length / days.length); // 3
+        const periodsPerDay = Math.ceil(schoolSubjects.length / days.length);
 
         return Promise.all(
           schoolClasses.flatMap((cls, classOffset) =>
             schoolSubjects.map((subject, subjectIndex) => {
               const teacher = schoolTeachers[subjectIndex];
-              // Offset the second class's timetable so both classes' lessons
-              // don't all cluster on identical slots.
               const slot = (subjectIndex + classOffset * 2) % (days.length * periodsPerDay);
               const dayIndex = slot % days.length;
               const period = Math.floor(slot / days.length);
@@ -1502,9 +1514,6 @@ async function main(): Promise<void> {
     )
   ).flat();
 
-  // teacherStaffs is [...one per nonPrimarySubject, ...one per primarySubject],
-  // so a primary school's 8 subject-teachers sit at offset
-  // nonPrimarySubjects.length + si * 8 in that same array.
   const primaryLessons = (
     await Promise.all(
       primarySchools.map((school, si) => {
@@ -1512,7 +1521,7 @@ async function main(): Promise<void> {
         const teacherOffset = nonPrimarySubjects.length + si * 8;
         const schoolTeachers = teacherStaffs.slice(teacherOffset, teacherOffset + 8);
         const schoolClasses = primaryClasses.slice(si * 2, si * 2 + 2);
-        const periodsPerDay = Math.ceil(schoolSubjects.length / days.length); // 2
+        const periodsPerDay = Math.ceil(schoolSubjects.length / days.length);
 
         return Promise.all(
           schoolClasses.flatMap((cls, classOffset) =>
@@ -1544,18 +1553,6 @@ async function main(): Promise<void> {
     )
   ).flat();
 
-  // ── SLOT RESERVATION ──────────────────────────────────────────────────────
-  //   Every Lesson now gets its own TimetablePeriod (step 19b below), and
-  //   TimetablePeriods enforces `@@unique([timetableId, day, startTime])` —
-  //   so no two Lessons for the same class can share a (day, hour) pair.
-  //   The regular per-class slot math above is collision-free by
-  //   construction (it's a bijection over that class's own slots), but the
-  //   second-subject and support-staff passes below pick a slot off a
-  //   *global* staff index — which can, and does, repeat within a single
-  //   class once enough staff cycle through just 2 classes per school.
-  //   This tracker records every (day, hour) a class already has a lesson
-  //   in, and claimSlot() walks forward to the next actually-free one
-  //   instead of assuming the naive formula never repeats.
   const usedSlotsByClassId = new Map<string, Set<string>>();
 
   function slotKey(day: Day, hour: number): string {
@@ -1583,23 +1580,14 @@ async function main(): Promise<void> {
         return { day, hour };
       }
     }
-    // Unreachable in practice — 5 days × 24 hours is far more room than any
-    // one class's lesson count here.
     throw new Error(`No free timetable slot available for class ${classId}`);
   }
 
-  // Reserve every regular-lesson slot up front so later passes never step on them.
   [...nonPrimaryLessons, ...primaryLessons].forEach((lesson) => {
     reserveSlot(lesson.classId, lesson.day, lesson.startTime.getHours());
   });
 
   // ── 14c. SECOND-SUBJECT LESSONS FOR TEACHERS ─────────────────────────────
-  //   Every teacher who was given a second subject in step 8a (i.e. almost
-  //   all of them, now that every department has ≥2 subjects) gets one more
-  //   lesson for that second subject, reusing one of their own school's
-  //   existing classes at a slot right after the regular timetable — so a
-  //   teacher visibly teaches multiple subjects AND multiple lessons, not
-  //   just multiple classes for a single subject.
   console.log('📘  Assigning second-subject Lessons to teachers …');
 
   const secondSubjectLessons = await Promise.all(
@@ -1609,7 +1597,7 @@ async function main(): Promise<void> {
         const schoolClasses = classesBySchoolId.get(r.staff.schoolId) ?? [];
         const cls = schoolClasses[i % schoolClasses.length];
         const preferredDayIndex = i % days.length;
-        const preferredHour = 13 + (i % 2); // slot right after the regular timetable
+        const preferredHour = 13 + (i % 2);
         const { day, hour } = claimSlot(cls.id, preferredDayIndex, preferredHour);
 
         return prismaClient.lessons.create({
@@ -1630,14 +1618,6 @@ async function main(): Promise<void> {
   );
 
   // ── 14b. ASSIGN SUBJECTS & LESSONS TO SUPPORT STAFF ──────────────────────
-  //   teacherStaffs already carry a subject + lessons from step 14 above.
-  //   The 16 primary-dept caregivers (primaryStaffs) and 100 extra support
-  //   staff (extraStaffs) were created without either — every Staffs
-  //   record should have both, so each is given one lesson of their own
-  //   (for a subject in their own department, at their own school). The
-  //   ClassSubjects row that formally links that staff member to the
-  //   class + subject is created in step 14d below, once every lesson
-  //   (and therefore every real class/subject/staff combination) is known.
   console.log('📎  Assigning Lessons to support staff …');
 
   const supportStaffs = [...primaryStaffs, ...extraStaffs];
@@ -1650,7 +1630,7 @@ async function main(): Promise<void> {
       const schoolClasses = classesBySchoolId.get(staff.schoolId) ?? [];
       const cls = schoolClasses[i % schoolClasses.length];
       const preferredDayIndex = i % days.length;
-      const preferredHour = 14 + (i % 3); // afternoon slot, after the regular timetable
+      const preferredHour = 14 + (i % 3);
       const { day, hour } = claimSlot(cls.id, preferredDayIndex, preferredHour);
 
       return prismaClient.lessons.create({
@@ -1678,16 +1658,6 @@ async function main(): Promise<void> {
   ];
 
   // ── 14d. CLASS SUBJECTS (class ↔ subject ↔ staff offerings) ──────────────
-  //   ClassSubjects is the schema's actual join model for "this class
-  //   offers this subject, optionally taught by this staff member"
-  //   (@@unique([classId, subjectId])) — Subjects and Classes/Staffs have
-  //   no direct relation fields to each other, so this step, not a
-  //   Subjects.update with a fabricated relation, is what wires them up.
-  //   Every Lesson already carries a concrete (classId, subjectId, staffId)
-  //   triple, so each distinct (classId, subjectId) pair across all lessons
-  //   becomes one ClassSubjects row (using the staff from the first lesson
-  //   seen for that pair), and every Lesson for that pair is then linked
-  //   back to it via classSubjectId.
   console.log('🔗  Seeding ClassSubjects …');
 
   const classSubjectKey = (classId: string, subjectId: string) => `${classId}::${subjectId}`;
@@ -1768,29 +1738,22 @@ async function main(): Promise<void> {
   );
 
   // ── 16. STUDENTS + USERS (32) ─────────────────────────────────────────────
-  //   2 students in every non-primary class (12 classes × 2 = 24), each
-  //   connected to ALL 12 subjects taught in THEIR OWN class (their full
-  //   curriculum). Plus 1 student per primary class (8), each connected to
-  //   ALL 8 early-years subjects taught in their own primary school — since
-  //   primary schools now have real subjects too (step 7), every student at
-  //   every school, not just secondary/tertiary, is enrolled in subjects.
   console.log('🎒  Seeding Students …');
 
   const STUDENTS_PER_NON_PRIMARY_CLASS = 2;
 
-  // Tracks which subjects each student was connected to, since a m2m
-  // relation isn't returned on `.create()` — needed by ReportCards below.
   const studentSubjectsMap = new Map<string, { id: string; name: string }[]>();
 
   const nonPrimaryStudents = (
     await Promise.all(
       nonPrimaryClasses.map((cls, classIdx) => {
-        const si = Math.floor(classIdx / 2); // which non-primary school this class belongs to
+        const si = Math.floor(classIdx / 2);
         const school = nonPrimarySchools[si];
         const schoolSubjects = nonPrimarySubjects.slice(
           si * subjectTemplates.length,
           (si + 1) * subjectTemplates.length,
         );
+        const schoolDepartments = departments.filter((d) => d.schoolId === school.id);
 
         return Promise.all(
           Array.from({ length: STUDENTS_PER_NON_PRIMARY_CLASS }, async (_, j) => {
@@ -1815,6 +1778,12 @@ async function main(): Promise<void> {
                 ratings: rating(600 + globalIndex),
               },
             });
+            // Cycle departmentId across the WHOLE school's department list
+            // (not just the supervising teacher's own department) so every
+            // department at every non-primary school ends up with at least
+            // one student, rather than only the department its two classes'
+            // supervisors happen to belong to.
+            const department = schoolDepartments[globalIndex % schoolDepartments.length];
             const student = await prismaClient.students.create({
               data: {
                 userId: user.id,
@@ -1826,10 +1795,10 @@ async function main(): Promise<void> {
                 guardianId: guardians[globalIndex % guardians.length].id,
                 schoolId: school.id,
                 gradeYearId: cls.gradeYearId,
-                examId: exams[globalIndex % exams.length].id,
+                examId: upcomingExams[globalIndex % upcomingExams.length].id,
                 testId: tests[globalIndex % tests.length].id,
                 assignmentId: assignments[globalIndex % assignments.length].id,
-                departmentId: cls.departmentId,
+                departmentId: department.id,
                 subjects: { connect: schoolSubjects.map((s) => ({ id: s.id })) },
               },
             });
@@ -1843,7 +1812,7 @@ async function main(): Promise<void> {
 
   const primaryStudents = await Promise.all(
     primaryClasses.map(async (cls, classIdx) => {
-      const si = Math.floor(classIdx / primaryClassDefs.length); // which primary school this class belongs to
+      const si = Math.floor(classIdx / primaryClassDefs.length);
       const school = primarySchools[si];
       const schoolSubjects = primarySubjects.slice(si * 8, si * 8 + 8);
       const globalIndex = 1000 + classIdx;
@@ -1877,9 +1846,11 @@ async function main(): Promise<void> {
           guardianId: guardians[classIdx % guardians.length].id,
           schoolId: school.id,
           gradeYearId: cls.gradeYearId,
+          examId: upcomingExams[classIdx % upcomingExams.length].id,
+          testId: tests[classIdx % tests.length].id,
+          assignmentId: assignments[classIdx % assignments.length].id,
           departmentId: cls.departmentId,
           subjects: { connect: schoolSubjects.map((s) => ({ id: s.id })) },
-          // No exam/test/assignment — early years don't sit formal exams.
         },
       });
       studentSubjectsMap.set(student.id, schoolSubjects);
@@ -1888,11 +1859,12 @@ async function main(): Promise<void> {
   );
 
   // ── 16b. EXTRA STUDENTS (10 per school = 100) ────────────────────────────
-  //   Every school — primary and non-primary alike — gets 10 additional
-  //   students, spread across that school's own classes and connected to
-  //   its own full subject curriculum, guardian, gradeYear, and (for
-  //   non-primary) exam/test/assignment — the same relation data as the
-  //   original students.
+  //   Every school's extra students are also cycled across ALL of that
+  //   school's departments (not just tied to the class supervisor's own
+  //   department), so combined with the nonPrimaryStudents fix above, every
+  //   department — primary and non-primary — is guaranteed at least one
+  //   student even where a school's classes alone wouldn't reach every
+  //   department.
   console.log('🎒  Seeding extra Students …');
 
   const EXTRA_STUDENTS_PER_SCHOOL = 10;
@@ -1905,10 +1877,12 @@ async function main(): Promise<void> {
           (si + 1) * subjectTemplates.length,
         );
         const schoolClasses = nonPrimaryClasses.slice(si * 2, si * 2 + 2);
+        const schoolDepartments = departments.filter((d) => d.schoolId === school.id);
         return Promise.all(
           Array.from({ length: EXTRA_STUDENTS_PER_SCHOOL }, async (_, j) => {
             const globalIndex = 2000 + si * EXTRA_STUDENTS_PER_SCHOOL + j;
             const cls = schoolClasses[j % schoolClasses.length];
+            const department = schoolDepartments[j % schoolDepartments.length];
             const [firstName, lastName, gender] = personFor(nextPersonIndex());
             const username = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.student${globalIndex + 1}`;
             const user = await prismaClient.users.create({
@@ -1940,10 +1914,10 @@ async function main(): Promise<void> {
                 guardianId: guardians[globalIndex % guardians.length].id,
                 schoolId: school.id,
                 gradeYearId: cls.gradeYearId,
-                examId: exams[globalIndex % exams.length].id,
+                examId: upcomingExams[globalIndex % upcomingExams.length].id,
                 testId: tests[globalIndex % tests.length].id,
                 assignmentId: assignments[globalIndex % assignments.length].id,
-                departmentId: cls.departmentId,
+                departmentId: department.id,
                 subjects: { connect: schoolSubjects.map((s) => ({ id: s.id })) },
               },
             });
@@ -1960,10 +1934,12 @@ async function main(): Promise<void> {
       primarySchools.map((school, si) => {
         const schoolSubjects = primarySubjects.slice(si * 8, si * 8 + 8);
         const schoolClasses = primaryClasses.slice(si * 2, si * 2 + 2);
+        const schoolDepartments = departments.filter((d) => d.schoolId === school.id);
         return Promise.all(
           Array.from({ length: EXTRA_STUDENTS_PER_SCHOOL }, async (_, j) => {
             const globalIndex = 3000 + si * EXTRA_STUDENTS_PER_SCHOOL + j;
             const cls = schoolClasses[j % schoolClasses.length];
+            const department = schoolDepartments[j % schoolDepartments.length];
             const [firstName, lastName, gender] = personFor(nextPersonIndex());
             const username = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.pupil${globalIndex + 1}`;
             const user = await prismaClient.users.create({
@@ -1995,9 +1971,11 @@ async function main(): Promise<void> {
                 guardianId: guardians[globalIndex % guardians.length].id,
                 schoolId: school.id,
                 gradeYearId: cls.gradeYearId,
-                departmentId: cls.departmentId,
+                examId: upcomingExams[globalIndex % upcomingExams.length].id,
+                testId: tests[globalIndex % tests.length].id,
+                assignmentId: assignments[globalIndex % assignments.length].id,
+                departmentId: department.id,
                 subjects: { connect: schoolSubjects.map((s) => ({ id: s.id })) },
-                // No exam/test/assignment — early years don't sit formal exams.
               },
             });
             studentSubjectsMap.set(student.id, schoolSubjects);
@@ -2013,23 +1991,6 @@ async function main(): Promise<void> {
   const students = [...nonPrimaryStudents, ...primaryStudents, ...extraStudents];
 
   // ── 17. ATTENDANCE ───────────────────────────────────────────────────────
-  //   Attendance is split across three purpose-built tables, matching the
-  //   updated schema:
-  //     • StudentAttendance — a student's attendance for a specific lesson
-  //       in their own class (unchanged in spirit from the previous model).
-  //     • StaffAttendance   — a staff member's daily clock-in/out at the
-  //       school itself, independent of any particular lesson.
-  //     • LessonAttendance  — the teaching staff member's clock-in/out for
-  //       each lesson they teach (or cover as a substitute).
-  //   Student attendance stays deliberately uneven per student: within
-  //   EVERY school, at least 5% of students are placed in a "very poor"
-  //   tier (below 50% present) and at least 10% are below 60% present
-  //   overall (the very-poor group counts toward that 10%); everyone else
-  //   gets a solid, varied attendance rate. Every lesson's attendance date
-  //   is computed once (by that lesson's position within its own class's
-  //   timetable) and reused for both its StudentAttendance rows and its
-  //   LessonAttendance row, so a lesson's date is always consistent no
-  //   matter which table references it.
   console.log('✅  Seeding StudentAttendance …');
 
   const studentsBySchoolId = new Map<string, typeof students>();
@@ -2047,34 +2008,41 @@ async function main(): Promise<void> {
     lessonsByClassIdForAttendance.set(lesson.classId, list);
   });
 
-  // Every lesson's attendance date, keyed by that lesson's own position
-  // within its class's lesson list — computed once so StudentAttendance and
-  // LessonAttendance rows for the same lesson always agree on the date.
+  // Cache of every occurrence of each weekday within the 3-month window, so
+  // we don't re-walk the calendar once per lesson.
+  const weekdayOccurrencesInWindow = new Map<Day, Date[]>();
+  function occurrencesFor(day: Day): Date[] {
+    let occurrences = weekdayOccurrencesInWindow.get(day);
+    if (!occurrences) {
+      occurrences = weekdayDatesInRange(day, WINDOW_START, WINDOW_END);
+      weekdayOccurrencesInWindow.set(day, occurrences);
+    }
+    return occurrences;
+  }
+
   const lessonAttendanceDate = new Map<string, Date>();
   lessonsByClassIdForAttendance.forEach((classLessons) => {
     classLessons.forEach((lesson, li) => {
-      lessonAttendanceDate.set(lesson.id, lastOccurrenceOf(lesson.day, li + 1));
+      const occurrences = occurrencesFor(lesson.day);
+      // Cycle through every occurrence of this lesson's weekday across the
+      // previous/current/next month window, rather than only the most
+      // recent one, so attendance history spans the full 3-month timeline.
+      lessonAttendanceDate.set(lesson.id, occurrences[li % occurrences.length]);
     });
   });
 
-  /**
-   * Deterministically assigns a target PRESENT rate to a student based on
-   * their rank within their own school. The first `veryPoorCount` students
-   * land below 50%, the next slice lands in the 50%–59% band (still below
-   * 60% overall), and everyone after that gets a healthy 75%–95% rate.
-   */
   function presentRateFor(rankInSchool: number, schoolSize: number): number {
     const veryPoorCount = Math.max(1, Math.ceil(schoolSize * 0.05));
     const below60Count = Math.max(veryPoorCount, Math.ceil(schoolSize * 0.1));
 
     if (rankInSchool < veryPoorCount) {
-      return 0.3 + (rankInSchool % 4) * 0.03; // 30% – 39% present (below 50%)
+      return 0.3 + (rankInSchool % 4) * 0.03;
     }
     if (rankInSchool < below60Count) {
-      return 0.5 + ((rankInSchool - veryPoorCount) % 5) * 0.018; // 50% – 58.2% present
+      return 0.5 + ((rankInSchool - veryPoorCount) % 5) * 0.018;
     }
     const normalRank = rankInSchool - below60Count;
-    return 0.75 + (normalRank % 7) * 0.033; // 75% – 94.8% present
+    return 0.75 + (normalRank % 7) * 0.033;
   }
 
   const studentAttendanceRecords = await Promise.all(
@@ -2087,18 +2055,11 @@ async function main(): Promise<void> {
       const classLessons = lessonsByClassIdForAttendance.get(student.classId) ?? [];
       const absentTarget = Math.round(classLessons.length * (1 - presentRate));
 
-      // A cyclic shift of a fixed "N absent / rest present" mask — this is
-      // a bijection for any classLessons.length, so it guarantees EXACTLY
-      // absentTarget absences (matching the intended rate precisely) while
-      // still varying which specific lessons are marked absent per student.
       return classLessons.map((lesson, li) => {
         const shifted = (li + rankInSchool) % classLessons.length;
         const isPresent = shifted >= absentTarget;
         const attendanceDate = lessonAttendanceDate.get(lesson.id)!;
 
-        // clockIn/clockOut are optional now — an ABSENT record has no real
-        // timestamps, so only a PRESENT row gets them, reusing the lesson's
-        // own start/end time-of-day applied to the attendance date.
         let clockIn: Date | null = null;
         let clockOut: Date | null = null;
         if (isPresent) {
@@ -2124,15 +2085,21 @@ async function main(): Promise<void> {
   );
 
   // ── 17b. STAFF ATTENDANCE (daily school clock-in/out) ────────────────────
-  //   Every staff member — teachers, primary caregivers, and extra support
-  //   staff alike — clocks in and out of the school itself for each of the
-  //   last STAFF_ATTENDANCE_DAYS school days, independent of any lesson.
   console.log('🕗  Seeding StaffAttendance …');
 
-  const STAFF_ATTENDANCE_DAYS = 10;
+  // Evenly sample school days across the full previous/current/next month
+  // window (rather than just the last 10 days) so every staff member's
+  // attendance history spans the whole 3-month timeline.
+  const STAFF_ATTENDANCE_DAYS = 18;
+  const staffAttendanceStride = Math.max(
+    1,
+    Math.floor(SCHOOL_DAYS_IN_WINDOW.length / STAFF_ATTENDANCE_DAYS),
+  );
+  const staffAttendanceDates = Array.from({ length: STAFF_ATTENDANCE_DAYS }, (_, d) => {
+    const idx = Math.min(d * staffAttendanceStride, SCHOOL_DAYS_IN_WINDOW.length - 1);
+    return SCHOOL_DAYS_IN_WINDOW[idx];
+  });
 
-  /** Deterministic PRESENT/LATE/ABSENT cycle, reused for both daily and
-   *  per-lesson staff attendance so both stay varied but predictable. */
   function staffAttendanceStatusFor(seed: number): AttendanceStatus {
     const cycle = [
       AttendanceStatus.PRESENT,
@@ -2150,7 +2117,7 @@ async function main(): Promise<void> {
       Array.from({ length: STAFF_ATTENDANCE_DAYS }, (_, d) => {
         const seed = si * STAFF_ATTENDANCE_DAYS + d;
         const status = staffAttendanceStatusFor(seed);
-        const date = schoolDaysAgo(d + 1);
+        const date = staffAttendanceDates[d];
 
         let clockIn: Date | null = null;
         let clockOut: Date | null = null;
@@ -2177,16 +2144,11 @@ async function main(): Promise<void> {
   );
 
   // ── 17c. LESSON ATTENDANCE (per-lesson teaching clock-in/out) ────────────
-  //   Every Lesson gets exactly one LessonAttendance row for the staff
-  //   member assigned to teach it, reusing the same attendanceDate computed
-  //   above for that lesson's StudentAttendance rows.
   console.log('📔  Seeding LessonAttendance …');
 
   const lessonAttendanceRecords = await Promise.all(
     lessons.map((lesson, li) => {
       const date = lessonAttendanceDate.get(lesson.id)!;
-      // Offset the seed so a lesson's teaching-attendance status doesn't
-      // just mirror that same staff member's daily StaffAttendance cycle.
       const status = staffAttendanceStatusFor(li + 3);
 
       let clockIn: Date | null = null;
@@ -2211,50 +2173,68 @@ async function main(): Promise<void> {
     }),
   );
 
-  // ── 18. REPORT CARDS (32) ─────────────────────────────────────────────────
-  //   One card per student — primary and non-primary alike — linked to the
-  //   first of that student's own assigned subjects (a ReportCard's
-  //   `subjects` connection sets that subject's single reportCardId, so
-  //   only one subject can be linked per card).
+  // ── 18. REPORT CARDS (2 per student: previous term COMPLETED + current  ──
+  //   term INCOMPLETE) — combined with each student's examId (an upcoming
+  //   exam) this gives every student previous-exam, upcoming-exam, and
+  //   report-card information.
   console.log('📊  Seeding ReportCards …');
 
-  await Promise.all(
-    students.map((student, i) => {
-      const studentSubjects = studentSubjectsMap.get(student.id);
-      return prismaClient.reportCards.create({
-        data: {
-          testScore: 55 + (i % 35),
-          assignmentScore: 60 + (i % 30),
-          examScore: 50 + (i % 40),
-          attendanceScore: 70 + (i % 25),
-          status: 'INCOMPLETE',
-          teacherComment: 'Shows consistent effort and good classroom participation.',
-          generalComment: 'A pleasure to teach this term — keep up the excellent work.',
-          studentId: student.id,
-          subjects: studentSubjects?.length
-            ? { connect: [{ id: studentSubjects[0].id }] }
-            : undefined,
-        },
-      });
-    }),
-  );
+  const examById = new Map(exams.map((e) => [e.id, e]));
 
-  // ── 19. FEES + RECEIPTS ──────────────────────────────────────────────────
-  //   Every student is billed every compulsory fee from their OWN school's
-  //   catalog (step 4b), plus exactly one optional fee (transportation,
-  //   lunch, etc.) cycled from that same school's catalog — so a fee is
-  //   never generic, it's always tied to the student's school, class, and
-  //   the FeeStructures row it came from. Every fee also carries `paid` +
-  //   `outstanding` (always summing to `amount`). A student's overall
-  //   payment status is "paid" once every one of their COMPULSORY fees is
-  //   PAID — every 4th student (25%, in every school) is forced fully paid
-  //   on all compulsory fees so that rule always has real examples to find.
-  //
-  //   Whenever a fee actually has money against it (PAID or PARTIAL), a real
-  //   Receipt row is created first and linked via Fees.receiptId — covering
-  //   the amount actually paid, tagged with the student, the student's own
-  //   school, a payment method, and (where one exists) the school's own
-  //   Bursar as the staff member who issued it. UNPAID fees get no receipt.
+  const reportCards = (
+    await Promise.all(
+      students.map(async (student, i) => {
+        const studentSubjects = studentSubjectsMap.get(student.id);
+        const subjectConnect = studentSubjects?.length
+          ? { connect: [{ id: studentSubjects[0].id }] }
+          : undefined;
+
+        const previousExam = previousExams[i % previousExams.length];
+        const upcomingExam = student.examId ? examById.get(student.examId) : undefined;
+
+        const previousReportCard = await prismaClient.reportCards.create({
+          data: {
+            testScore: 55 + (i % 35),
+            assignmentScore: 60 + (i % 30),
+            examScore: 50 + (i % 40),
+            attendanceScore: 70 + (i % 25),
+            status: 'COMPLETED',
+            teacherComment: `Final result for "${previousExam.title}" — shows consistent effort and good classroom participation.`,
+            generalComment: 'A pleasure to teach last term — keep up the excellent work.',
+            studentId: student.id,
+            subjects: subjectConnect,
+          },
+        });
+
+        const currentReportCard = await prismaClient.reportCards.create({
+          data: {
+            testScore: 40 + (i % 30),
+            assignmentScore: 45 + (i % 25),
+            examScore: 0,
+            attendanceScore: 65 + (i % 20),
+            status: 'INCOMPLETE',
+            teacherComment: upcomingExam
+              ? `In progress this term — final scores are pending "${upcomingExam.title}".`
+              : 'In progress this term — final scores pending upcoming assessments.',
+            generalComment: 'Continues to make steady progress this term.',
+            studentId: student.id,
+            subjects: subjectConnect,
+          },
+        });
+
+        return [previousReportCard, currentReportCard];
+      }),
+    )
+  ).flat();
+
+  // ── 19. FEES + RECEIPTS (billed per term: previous + current) ────────────
+  //   Every student is now billed for BOTH their completed previous term
+  //   and their ongoing current term (Fees.termId ties each bill to one).
+  //   Whatever was left PARTIAL/UNPAID on the previous term's Fees rows
+  //   simply stays that way — nothing "clears" it — so a student resuming
+  //   for the current term can still be owing from last term, and the
+  //   total amount they owe across terms is just `sum(outstanding)` over
+  //   all their Fees rows.
   console.log('💰  Seeding Fees + Receipts …');
 
   const bursarBySchoolId = new Map<string, (typeof extraStaffs)[number]>();
@@ -2268,7 +2248,14 @@ async function main(): Promise<void> {
     return cycle[seed % cycle.length];
   }
 
+  /** Current-term bills skew toward UNPAID/PARTIAL — the term has only just started. */
+  function currentTermFeeStatus(seed: number): 'PAID' | 'PARTIAL' | 'UNPAID' {
+    const cycle = ['UNPAID', 'UNPAID', 'PARTIAL', 'UNPAID', 'PARTIAL', 'PAID'] as const;
+    return cycle[seed % cycle.length];
+  }
+
   let receiptsCreated = 0;
+  let studentsCarryingPreviousBalance = 0;
 
   const fees = (
     await Promise.all(
@@ -2282,15 +2269,18 @@ async function main(): Promise<void> {
           schoolClasses.findIndex((c) => c.id === student.classId),
           0,
         );
-        const classDifferential = classIndex * 1_500; // senior class pays a bit more
-
-        // Every 4th student has fully settled all compulsory fees — the
-        // guaranteed "fully paid" cohort the payment-status rule needs.
-        const isFullyPaidStudent = i % 4 === 0;
+        const classDifferential = classIndex * 1_500;
         const issuedById = bursarBySchoolId.get(schoolId)?.id;
 
-        // Only fees with real money against them (PAID/PARTIAL) get a Receipt.
+        const previousTerm =
+          (student.gradeYearId ? previousTermByGradeYearId.get(student.gradeYearId) : undefined) ??
+          terms[0];
+        const currentTerm =
+          (student.gradeYearId ? currentTermByGradeYearId.get(student.gradeYearId) : undefined) ??
+          terms[1];
+
         const receiptIdFor = async (
+          termLabel: 'previous' | 'current',
           status: 'PAID' | 'PARTIAL' | 'UNPAID',
           seed: number,
           paidAmount: number,
@@ -2298,7 +2288,9 @@ async function main(): Promise<void> {
           if (paidAmount <= 0) return undefined;
           const receipt = await prismaClient.receipt.create({
             data: {
-              receiptNumber: `RCT-${schoolId.slice(0, 4).toUpperCase()}-${String(seed + 1).padStart(5, '0')}`,
+              receiptNumber: `RCT-${schoolId.slice(0, 4).toUpperCase()}-${
+                termLabel === 'previous' ? 'P' : 'C'
+              }-${String(seed + 1).padStart(5, '0')}`,
               amount: paidAmount,
               currency: 'NGN',
               paymentMethod: paymentMethodFor(seed),
@@ -2312,78 +2304,101 @@ async function main(): Promise<void> {
           return receipt.id;
         };
 
-        const compulsoryFees = await Promise.all(
-          catalog.compulsory.map(async (structure, si) => {
-            const seed = i * 10 + si;
-            const status = isFullyPaidStudent ? 'PAID' : feeStatus(seed);
-            const amount = structure.amount + classDifferential;
-            const { paid, outstanding } = paymentSplit(amount, status, seed);
-            const receiptId = await receiptIdFor(status, seed, paid);
-            return prismaClient.fees.create({
-              data: {
-                name: structure.name,
-                description: structure.description,
-                currency: 'NGN',
-                amount,
-                paid,
-                outstanding,
-                category: FeeCategory.COMPULSORY,
-                status,
-                studentId: student.id,
-                schoolId,
-                classId: student.classId,
-                feeStructureId: structure.id,
-                receiptId,
-              },
-            });
-          }),
+        /** Bills every structure in `catalog` for a single term and returns the created Fees rows. */
+        const billTerm = async (
+          termLabel: 'previous' | 'current',
+          termId: string,
+          statusFor: (seed: number) => 'PAID' | 'PARTIAL' | 'UNPAID',
+          seedOffset: number,
+        ) => {
+          const compulsoryFees = await Promise.all(
+            catalog.compulsory.map(async (structure, si) => {
+              const seed = seedOffset + si;
+              const status = statusFor(seed);
+              const amount = structure.amount + classDifferential;
+              const { paid, outstanding } = paymentSplit(amount, status, seed);
+              const receiptId = await receiptIdFor(termLabel, status, seed, paid);
+              return prismaClient.fees.create({
+                data: {
+                  name: structure.name,
+                  description: structure.description,
+                  currency: 'NGN',
+                  amount,
+                  paid,
+                  outstanding,
+                  category: FeeCategory.COMPULSORY,
+                  status,
+                  studentId: student.id,
+                  schoolId,
+                  classId: student.classId,
+                  feeStructureId: structure.id,
+                  termId,
+                  receiptId,
+                },
+              });
+            }),
+          );
+
+          const optionalStructure = catalog.optional[i % catalog.optional.length];
+          const optionalSeed = seedOffset + catalog.compulsory.length;
+          const optionalStatus = statusFor(optionalSeed);
+          const optionalAmount = optionalStructure.amount + classDifferential;
+          const optionalSplit = paymentSplit(optionalAmount, optionalStatus, optionalSeed);
+          const optionalReceiptId = await receiptIdFor(
+            termLabel,
+            optionalStatus,
+            optionalSeed,
+            optionalSplit.paid,
+          );
+          const optionalFee = await prismaClient.fees.create({
+            data: {
+              name: optionalStructure.name,
+              description: optionalStructure.description,
+              amount: optionalAmount,
+              paid: optionalSplit.paid,
+              outstanding: optionalSplit.outstanding,
+              currency: 'NGN',
+              category: FeeCategory.OPTIONAL,
+              status: optionalStatus,
+              studentId: student.id,
+              schoolId,
+              classId: student.classId,
+              feeStructureId: optionalStructure.id,
+              termId,
+              receiptId: optionalReceiptId,
+            },
+          });
+
+          return [...compulsoryFees, optionalFee];
+        };
+
+        // Every 4th student fully cleared their previous term's fees; everyone
+        // else has a realistic PAID/PARTIAL/UNPAID mix — and PARTIAL/UNPAID
+        // there means a genuine carried-over balance into the current term.
+        const isFullyPaidStudent = i % 4 === 0;
+        const previousTermFees = await billTerm(
+          'previous',
+          previousTerm.id,
+          (seed) => (isFullyPaidStudent ? 'PAID' : feeStatus(seed)),
+          i * 10,
+        );
+        const currentTermFees = await billTerm(
+          'current',
+          currentTerm.id,
+          currentTermFeeStatus,
+          i * 10 + 100,
         );
 
-        // Every student opts into exactly one optional fee, cycled from the
-        // school's optional catalog so the mix of transport/lunch/etc. varies.
-        // Optional fees don't factor into the "fully paid" rule, so they keep
-        // following the normal status cycle even for isFullyPaidStudent.
-        const optionalStructure = catalog.optional[i % catalog.optional.length];
-        const optionalSeed = i * 10 + catalog.compulsory.length;
-        const optionalStatus = feeStatus(optionalSeed);
-        const optionalAmount = optionalStructure.amount + classDifferential;
-        const optionalSplit = paymentSplit(optionalAmount, optionalStatus, optionalSeed);
-        const optionalReceiptId = await receiptIdFor(
-          optionalStatus,
-          optionalSeed,
-          optionalSplit.paid,
-        );
-        const optionalFee = await prismaClient.fees.create({
-          data: {
-            name: optionalStructure.name,
-            description: optionalStructure.description,
-            amount: optionalAmount,
-            paid: optionalSplit.paid,
-            outstanding: optionalSplit.outstanding,
-            currency: 'NGN',
-            category: FeeCategory.OPTIONAL,
-            status: optionalStatus,
-            studentId: student.id,
-            schoolId,
-            classId: student.classId,
-            feeStructureId: optionalStructure.id,
-            receiptId: optionalReceiptId,
-          },
-        });
+        if (previousTermFees.some((f) => f.outstanding > 0)) {
+          studentsCarryingPreviousBalance += 1;
+        }
 
-        return [...compulsoryFees, optionalFee];
+        return [...previousTermFees, ...currentTermFees];
       }),
     )
   ).flat();
 
   // ── 19b. TIMETABLES + TIMETABLE PERIODS (20 timetables) ──────────────────
-  //   Every class gets exactly one Timetable — anchored to its own school,
-  //   class, gradeYear, and (where one exists for that gradeYear) term.
-  //   Each Timetable gets one TimetablePeriod per Lesson already scheduled
-  //   for that class (reusing the lesson's own day/start/end, and linking
-  //   back to it via lessonId), plus a single Monday-morning Assembly
-  //   period that has no lesson attached — so both the "teaching period
-  //   backed by a real lesson" and "non-teaching period" cases are covered.
   console.log('🗓️   Seeding Timetables …');
 
   const lessonsByClassId = new Map<string, typeof lessons>();
@@ -2393,27 +2408,15 @@ async function main(): Promise<void> {
     lessonsByClassId.set(lesson.classId, list);
   });
 
-  const termByGradeYearId = new Map<string, (typeof terms)[number]>();
-  terms.forEach((term) => {
-    if (term.gradeYearId && !termByGradeYearId.has(term.gradeYearId)) {
-      termByGradeYearId.set(term.gradeYearId, term);
-    }
-  });
-
   const timetables = await Promise.all(
     classes.map(async (cls, i) => {
       const classLessons = lessonsByClassId.get(cls.id) ?? [];
+      // A timetable represents the actively-running schedule, so it's
+      // anchored to the ongoing current term, not the completed previous one.
       const term =
-        (cls.gradeYearId ? termByGradeYearId.get(cls.gradeYearId) : undefined) ??
+        (cls.gradeYearId ? currentTermByGradeYearId.get(cls.gradeYearId) : undefined) ??
         terms[i % terms.length];
 
-      // Classes.schoolId is optional in the schema (String?), but
-      // Timetables.schoolId is required — every class created in step 10
-      // above always sets its own schoolId explicitly, so this should never
-      // actually be missing. Guard it explicitly rather than asserting with
-      // `!`, so a future regression (e.g. a new class-creation path that
-      // forgets schoolId) fails here with a clear, class-specific message
-      // instead of surfacing as an opaque Prisma "must not be null" error.
       const schoolId = cls.schoolId;
       if (!schoolId) {
         throw new Error(
@@ -2433,8 +2436,6 @@ async function main(): Promise<void> {
       });
 
       await Promise.all([
-        // One period per lesson already on this class's timetable, kept in
-        // sync by reusing that lesson's own day/startTime/endTime.
         ...classLessons.map((lesson) =>
           prismaClient.timetablePeriods.create({
             data: {
@@ -2448,7 +2449,6 @@ async function main(): Promise<void> {
             },
           }),
         ),
-        // A single non-teaching period with no lesson attached.
         prismaClient.timetablePeriods.create({
           data: {
             name: `${cls.name} Morning Assembly`,
@@ -2526,6 +2526,316 @@ async function main(): Promise<void> {
     ),
   );
 
+  // ── 22. NOTIFICATIONS (every user gets ≥2, spread across the 3-month  ────
+  //   window: previous month, current month, next month) ───────────────────
+  console.log('🔔  Seeding Notifications …');
+
+  // Icon and colour are now enum-typed on the Notifications model
+  // (NotificationIcon / NotificationColor) rather than raw strings — the
+  // app layer resolves NotificationIcon → "bi-…" class and NotificationColor
+  // → "var(--color-X-bg)"/"var(--color-X-text)" (see the enum doc comments
+  // in schema.prisma). bgColor and iconColor always share the same colour
+  // family for a given notification, so `color` below drives both. Each
+  // NotificationType and each NotificationEntityType gets its own unique
+  // icon + colour pair — none are reused within the same enum.
+  type NotificationIconName =
+    | 'MEGAPHONE_FILL'
+    | 'CASH_COIN'
+    | 'CASH_STACK'
+    | 'PERSON_FILL_EXCLAMATION'
+    | 'JOURNAL_CHECK'
+    | 'PENCIL_SQUARE'
+    | 'CALENDAR2_WEEK_FILL'
+    | 'CALENDAR_EVENT_FILL'
+    | 'CLIPBOARD2_CHECK_FILL'
+    | 'FILE_EARMARK_BAR_GRAPH_FILL'
+    | 'INFO_CIRCLE_FILL';
+
+  type NotificationColorName =
+    | 'GREEN'
+    | 'YELLOW'
+    | 'ORANGE'
+    | 'RED'
+    | 'PURPLE'
+    | 'TEAL'
+    | 'PINK'
+    | 'INDIGO';
+
+  type NotificationStyle = { icon: NotificationIconName; color: NotificationColorName };
+
+  function chip(color: NotificationColorName, icon: NotificationIconName): NotificationStyle {
+    return { icon, color };
+  }
+
+  const NOTIFICATION_TYPE_STYLE: Record<
+    | 'ANNOUNCEMENT'
+    | 'FEE_REMINDER'
+    | 'ATTENDANCE_ALERT'
+    | 'EXAM_SCHEDULED'
+    | 'TIMETABLE_CHANGE'
+    | 'REPORT_CARD_READY'
+    | 'GENERAL',
+    NotificationStyle
+  > = {
+    ANNOUNCEMENT: chip('INDIGO', 'MEGAPHONE_FILL'),
+    FEE_REMINDER: chip('YELLOW', 'CASH_COIN'),
+    ATTENDANCE_ALERT: chip('ORANGE', 'PERSON_FILL_EXCLAMATION'),
+    EXAM_SCHEDULED: chip('RED', 'JOURNAL_CHECK'),
+    TIMETABLE_CHANGE: chip('PURPLE', 'CALENDAR2_WEEK_FILL'),
+    REPORT_CARD_READY: chip('TEAL', 'FILE_EARMARK_BAR_GRAPH_FILL'),
+    GENERAL: chip('PINK', 'INFO_CIRCLE_FILL'),
+  };
+
+  const NOTIFICATION_ENTITY_TYPE_STYLE: Record<
+    'ANNOUNCEMENT' | 'FEE' | 'EXAM' | 'TEST' | 'ASSIGNMENT' | 'TIMETABLE' | 'EVENT' | 'REPORT_CARD',
+    NotificationStyle
+  > = {
+    ANNOUNCEMENT: chip('INDIGO', 'MEGAPHONE_FILL'),
+    FEE: chip('YELLOW', 'CASH_STACK'),
+    EXAM: chip('RED', 'JOURNAL_CHECK'),
+    TEST: chip('ORANGE', 'PENCIL_SQUARE'),
+    ASSIGNMENT: chip('TEAL', 'CLIPBOARD2_CHECK_FILL'),
+    TIMETABLE: chip('PURPLE', 'CALENDAR2_WEEK_FILL'),
+    EVENT: chip('PINK', 'CALENDAR_EVENT_FILL'),
+    REPORT_CARD: chip('GREEN', 'FILE_EARMARK_BAR_GRAPH_FILL'),
+  };
+
+  /**
+   * A notification's icon/colour is driven by its `entityType` when one is
+   * set (it's the more specific signal — "this is about a Fee"), falling
+   * back to its `type` otherwise (e.g. ATTENDANCE_ALERT has no entityType).
+   */
+  function styleForNotification(
+    type: keyof typeof NOTIFICATION_TYPE_STYLE,
+    entityType?: keyof typeof NOTIFICATION_ENTITY_TYPE_STYLE | null,
+  ): NotificationStyle {
+    if (entityType && NOTIFICATION_ENTITY_TYPE_STYLE[entityType]) {
+      return NOTIFICATION_ENTITY_TYPE_STYLE[entityType];
+    }
+    return NOTIFICATION_TYPE_STYLE[type];
+  }
+
+  const globalNotificationDefs = [
+    {
+      title: 'Platform Maintenance Notice',
+      message: 'EduAdmin Pro underwent scheduled maintenance last month to improve performance.',
+      type: 'GENERAL',
+      priority: 'LOW',
+      monthOffset: -1 as const,
+      day: 12,
+    },
+    {
+      title: 'New Feature: Analytics Dashboard',
+      message: 'A new analytics dashboard is now live across all schools this month.',
+      type: 'ANNOUNCEMENT',
+      priority: 'NORMAL',
+      monthOffset: 0 as const,
+      day: 5,
+    },
+    {
+      title: 'System-Wide Policy Update',
+      message: 'An updated data-privacy policy takes effect this month — please review it.',
+      type: 'GENERAL',
+      priority: 'NORMAL',
+      monthOffset: 0 as const,
+      day: 18,
+    },
+    {
+      title: 'Upcoming Platform Upgrade',
+      message: 'EduAdmin Pro will roll out a scheduled platform upgrade next month.',
+      type: 'ANNOUNCEMENT',
+      priority: 'HIGH',
+      monthOffset: 1 as const,
+      day: 4,
+    },
+  ] as const;
+
+  const globalNotifications = await Promise.all(
+    globalNotificationDefs.map((def) => {
+      const style = styleForNotification(def.type, 'ANNOUNCEMENT');
+      return prismaClient.notifications.create({
+        data: {
+          title: def.title,
+          message: def.message,
+          type: def.type,
+          priority: def.priority,
+          icon: style.icon,
+          bgColor: style.color,
+          iconColor: style.color,
+          schoolId: null,
+          entityType: 'ANNOUNCEMENT',
+          createdAt: monthOffsetDate(def.monthOffset, def.day, 8, 0),
+        },
+      });
+    }),
+  );
+
+  const schoolNotificationDefs = [
+    {
+      title: 'Last Term Fees Reconciled',
+      message: 'Fee records for last term have been reconciled and receipts issued.',
+      type: 'FEE_REMINDER',
+      entityType: 'FEE',
+      priority: 'NORMAL',
+      monthOffset: -1 as const,
+      day: 20,
+    },
+    {
+      title: 'Attendance Review',
+      message:
+        'Attendance records for this term are being reviewed — please confirm any discrepancies.',
+      type: 'ATTENDANCE_ALERT',
+      entityType: null,
+      priority: 'NORMAL',
+      monthOffset: 0 as const,
+      day: 8,
+    },
+    {
+      title: 'Timetable Updated',
+      message: "This term's timetable has been updated — please check the latest schedule.",
+      type: 'TIMETABLE_CHANGE',
+      entityType: 'TIMETABLE',
+      priority: 'HIGH',
+      monthOffset: 0 as const,
+      day: 15,
+    },
+    {
+      title: 'Upcoming Exam Scheduled',
+      message: "Next term's exam has been scheduled — please review the exam timetable.",
+      type: 'EXAM_SCHEDULED',
+      entityType: 'EXAM',
+      priority: 'HIGH',
+      monthOffset: 1 as const,
+      day: 10,
+    },
+  ] as const;
+
+  const notificationsBySchoolId = new Map<string, typeof globalNotifications>();
+  await Promise.all(
+    schools.map(async (school) => {
+      const created = await Promise.all(
+        schoolNotificationDefs.map((def) => {
+          const style = styleForNotification(def.type, def.entityType);
+          return prismaClient.notifications.create({
+            data: {
+              title: `${def.title} — ${school.schoolName}`,
+              message: def.message,
+              type: def.type,
+              priority: def.priority,
+              icon: style.icon,
+              bgColor: style.color,
+              iconColor: style.color,
+              schoolId: school.id,
+              entityType: def.entityType,
+              createdAt: monthOffsetDate(def.monthOffset, def.day, 8, 0),
+            },
+          });
+        }),
+      );
+      notificationsBySchoolId.set(school.id, created);
+    }),
+  );
+
+  let notificationRecipientsCreated = 0;
+
+  /** Assigns 2 distinct notifications from `pool` to `userId` as NotificationRecipients. */
+  async function giveNotifications(
+    userId: string,
+    pool: typeof globalNotifications,
+    seed: number,
+  ): Promise<void> {
+    if (pool.length === 0) return;
+    const secondPickOffset = pool.length > 1 ? 1 : 0;
+    const picks = [pool[seed % pool.length], pool[(seed + secondPickOffset) % pool.length]];
+    const uniquePicks = Array.from(new Map(picks.map((n) => [n.id, n])).values());
+    await Promise.all(
+      uniquePicks.map(async (notification, idx) => {
+        const isRead = (seed + idx) % 3 !== 0; // roughly two-thirds read
+        await prismaClient.notificationRecipients.create({
+          data: {
+            notificationId: notification.id,
+            userId,
+            isRead,
+            readAt: isRead ? new Date(notification.createdAt.getTime() + 3_600_000) : null,
+          },
+        });
+        notificationRecipientsCreated += 1;
+      }),
+    );
+  }
+
+  console.log('🔔  Assigning Notifications to every user …');
+
+  // Super/Danira admins — system-wide (global) notifications.
+  await giveNotifications(superAdmin.id, globalNotifications, 0);
+  await giveNotifications(daniraAdmin.id, globalNotifications, 1);
+
+  // Group admins — notifications from the first school in their group.
+  const groupANotifications =
+    notificationsBySchoolId.get(groupASchools[0]?.id ?? '') ?? globalNotifications;
+  const groupBNotifications =
+    notificationsBySchoolId.get(groupBSchools[0]?.id ?? '') ?? globalNotifications;
+  await giveNotifications(guserA.id, groupANotifications, 2);
+  await giveNotifications(guserB.id, groupBNotifications, 3);
+
+  // School admins — their own school's notifications.
+  await Promise.all(
+    schoolAdmins.map((sa, i) =>
+      giveNotifications(
+        sa.user.id,
+        notificationsBySchoolId.get(sa.schoolId) ?? globalNotifications,
+        i,
+      ),
+    ),
+  );
+
+  // Staff (teachers, primary-dept staff, extra support staff) — their own school's notifications.
+  await Promise.all(
+    allStaffs.map((staff, i) =>
+      giveNotifications(
+        staff.userId,
+        notificationsBySchoolId.get(staff.schoolId) ?? globalNotifications,
+        i,
+      ),
+    ),
+  );
+
+  // Students — their own school's notifications.
+  await Promise.all(
+    students.map((student, i) =>
+      giveNotifications(
+        student.userId,
+        (student.schoolId && notificationsBySchoolId.get(student.schoolId)) || globalNotifications,
+        i,
+      ),
+    ),
+  );
+
+  // Guardians — notifications from their first ward's school.
+  const schoolIdByGuardianId = new Map<string, string>();
+  students.forEach((student) => {
+    if (student.schoolId && !schoolIdByGuardianId.has(student.guardianId)) {
+      schoolIdByGuardianId.set(student.guardianId, student.schoolId);
+    }
+  });
+  await Promise.all(
+    guardians.map((guardian, i) => {
+      const schoolId = schoolIdByGuardianId.get(guardian.id);
+      const pool = (schoolId && notificationsBySchoolId.get(schoolId)) || globalNotifications;
+      return giveNotifications(guardian.userId, pool, i);
+    }),
+  );
+
+  const totalNotifications =
+    globalNotifications.length + schools.length * schoolNotificationDefs.length;
+  const totalNotifiedUsers =
+    2 + // super + danira admin
+    2 + // group admins
+    schoolAdmins.length +
+    allStaffs.length +
+    students.length +
+    guardians.length;
+
   // ── Summary ───────────────────────────────────────────────────────────────
   console.log(`
 ✅  Seeding complete!
@@ -2534,7 +2844,7 @@ async function main(): Promise<void> {
   ─────────────────── ───────
   SchoolGroups            ${schoolGroups.length}
   Schools                 ${schools.length}  (each has a regNumber)
-  Departments             ${departments.length}  (4/primary school, 5/secondary+tertiary school; every one has a head)
+  Departments             ${departments.length}  (4/primary school, 5/secondary+tertiary school; every one has a head AND at least one student)
   Admins                  14
   Staffs                  ${allStaffs.length}  (${teacherStaffs.length} subject teachers (incl. primary) + ${primaryStaffs.length} primary-dept caregivers + ${extraStaffs.length} extra support staff (10/school); each has a staffId, ACTIVE/LEAVE status, and is assigned at least one lesson — most teachers now teach 2 subjects across multiple lessons)
   Classes                 ${classes.length}  (2 per school, every school has its own)
@@ -2542,25 +2852,29 @@ async function main(): Promise<void> {
   ClassSubjects           ${classSubjects.length}  (one per distinct class↔subject offering, tagged with the teaching staff)
   FeeStructures           ${feeStructures.length}  (${compulsoryFeeTemplates.length} compulsory + ${optionalFeeTemplates.length} optional per school, amount scaled by SchoolType)
   GradeYears              ${gradeYears.length}
-  Terms                   ${terms.length}
+  Terms                   ${terms.length}  (2 per GradeYear: a completed PREVIOUS term + the ONGOING current term)
   Exams                   ${exams.length}
   Tests                   ${tests.length}
   Assignments             ${assignments.length}
   Lessons                 ${lessons.length}  (${nonPrimaryLessons.length + primaryLessons.length} timetable + ${secondSubjectLessons.length} second-subject + ${supportLessons.length} support-staff lessons — every one of the ${allStaffs.length} staff teaches at least one lesson, most teach several)
   Guardians               ${guardians.length}
-  Students                ${students.length}  (${nonPrimaryStudents.length} in subject classes + ${primaryStudents.length} in primary classes + ${extraStudents.length} extra students (10/school); each has a studentId + ACTIVE/SUSPENDED status)
-  StudentAttendance       ${studentAttendanceRecords.length}  (every student × every lesson in their own class; in every school ≥10% of students sit below 60% attendance and ≥5% below 50%)
-  StaffAttendance         ${staffAttendanceRecords.length}  (every staff member × last ${STAFF_ATTENDANCE_DAYS} school days, clocking in/out of the school itself)
-  LessonAttendance        ${lessonAttendanceRecords.length}  (one per Lesson, clocked by the staff member assigned to teach it)
-  ReportCards             ${students.length}
-  Fees                    ${fees.length}  (${compulsoryFeeTemplates.length} compulsory + 1 optional per student, each with paid/outstanding tracked — every 4th student has all compulsory fees fully paid)
+  Students                ${students.length}  (${nonPrimaryStudents.length} in subject classes + ${primaryStudents.length} in primary classes + ${extraStudents.length} extra students (10/school); each has a studentId + ACTIVE/SUSPENDED status; non-primary/extra students are cycled across ALL their school's departments so every department has ≥1 student)
+  StudentAttendance       ${studentAttendanceRecords.length}  (every student × every lesson in their own class, spread across last/this/next month; in every school ≥10% of students sit below 60% attendance and ≥5% below 50%)
+  StaffAttendance         ${staffAttendanceRecords.length}  (every staff member × ${STAFF_ATTENDANCE_DAYS} school days evenly sampled across last/this/next month)
+  LessonAttendance        ${lessonAttendanceRecords.length}  (one per Lesson, clocked by the staff member assigned to teach it, dated with that lesson's attendance date)
+  ReportCards             ${reportCards.length}  (2 per student — a COMPLETED report card for last term's exam + an INCOMPLETE report card for this term, in progress toward the upcoming exam)
+  Fees                    ${fees.length}  (${compulsoryFeeTemplates.length} compulsory + 1 optional per student PER TERM — previous term + current term, each tagged with termId; every 4th student cleared last term in full, ${studentsCarryingPreviousBalance} students still owe a balance carried over from their previous term)
   Receipts                ${receiptsCreated}  (one per PAID/PARTIAL fee, tagged with student, school, payment method, and the school's own Bursar)
   Timetables              ${timetables.length}  (1 per class, anchored to its school/gradeYear/term)
   TimetablePeriods        ${lessons.length + timetables.length}  (1 per lesson on that class's timetable + 1 Monday assembly per class)
   Events                  10
   Announcements           10
+  Notifications           ${totalNotifications}  (${globalNotifications.length} global + ${schoolNotificationDefs.length}/school, spread across last/this/next month; each carries a NotificationIcon + NotificationColor pair (bgColor/iconColor))
+  NotificationRecipients  ${notificationRecipientsCreated}  (every one of the ${totalNotifiedUsers} Users rows receives ≥2 notifications)
 
   Every User row now carries a "ratings" score (3.0–5.0).
+  Every student has an upcoming Exam (Students.examId), a previous-term
+  COMPLETED report card, and a current-term INCOMPLETE report card.
   Super admin login: kuku@yopmail.com / Password123!
   `);
 }

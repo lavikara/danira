@@ -8,28 +8,29 @@ datasource db {
 }
 
 model Users {
-  id          String        @id @default(uuid())
-  username    String        @unique
-  email       String        @unique
-  password    String
-  firstName   String
-  lastName    String
-  designation String?
-  phoneNumber String
-  country     String
-  state       String
-  address     String
-  isVerified  Boolean
-  gender      Gender
-  role        Role
-  status      UserCondition
-  ratings     Float         @default(0)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  admins      Admins?
-  staffs      Staffs?
-  students    Students?
-  guardians   Guardians?
+  id                     String                   @id @default(uuid())
+  username               String                   @unique
+  email                  String                   @unique
+  password               String
+  firstName              String
+  lastName               String
+  designation            String?
+  phoneNumber            String
+  country                String
+  state                  String
+  address                String
+  isVerified             Boolean
+  gender                 Gender
+  role                   Role
+  status                 UserCondition
+  ratings                Float                    @default(0)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  admins                 Admins?
+  staffs                 Staffs?
+  students               Students?
+  guardians              Guardians?
+  notificationRecipients NotificationRecipients[]
 }
 
 model Admins {
@@ -85,6 +86,7 @@ model Schools {
   group              SchoolGroups?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
   studentAttendances StudentAttendance[]
   staffAttendances   StaffAttendance[]
+  notifications      Notifications[]
 }
 
 model Departments {
@@ -193,9 +195,6 @@ model Classes {
   schoolId         String?
 }
 
-/// A timetable is the container for one school's (optionally one class/grade-year/term's)
-/// weekly schedule. Deleting a school takes its timetables with it; deleting a class,
-/// grade year, or term just detaches the timetable rather than destroying it.
 model Timetables {
   id          String             @id @default(uuid())
   name        String
@@ -215,9 +214,6 @@ model Timetables {
   @@unique([schoolId, classId, termId])
 }
 
-/// A single scheduled slot within a timetable (e.g. Monday 8:00-8:40, TEACHING period).
-/// Optionally links to the actual Lesson occupying that slot; non-teaching periods
-/// (breaks, assembly, lunch) simply leave lessonId null.
 model TimetablePeriods {
   id          String     @id @default(uuid())
   name        String
@@ -296,11 +292,9 @@ model Terms {
   gradeYearId String?
   gradeYear   GradeYears?  @relation(fields: [gradeYearId], references: [id], onDelete: SetNull)
   timetables  Timetables[]
+  fees        Fees[]
 }
 
-/// A student's attendance for the school day generally (lessonId null) or for a
-/// specific lesson occurrence (lessonId set). clockIn/clockOut are optional since
-/// an ABSENT record has no real timestamps to capture.
 model StudentAttendance {
   id         String           @id @default(uuid())
   date       DateTime         @db.Date
@@ -320,8 +314,6 @@ model StudentAttendance {
   @@index([schoolId, date])
 }
 
-/// A staff member's daily attendance at the school — clocking in on arrival and
-/// clocking out on departure. One row per staff member per day.
 model StaffAttendance {
   id        String           @id @default(uuid())
   date      DateTime         @db.Date
@@ -339,11 +331,6 @@ model StaffAttendance {
   @@index([schoolId, date])
 }
 
-/// A teaching staff member's clock-in/out for a specific lesson occurrence.
-/// Distinct from StaffAttendance (whole school day) — a teacher present at
-/// school all day can still be late to, or miss, an individual period. staffId
-/// is kept explicit (rather than inferred from lesson.staffId) so substitute
-/// teachers can log attendance for a lesson they're covering.
 model LessonAttendance {
   id        String           @id @default(uuid())
   date      DateTime         @db.Date
@@ -361,9 +348,6 @@ model LessonAttendance {
   @@index([staffId, date])
 }
 
-/// Subject master data — one row per subject per school (e.g. "Mathematics" at
-/// Greenwood High). Which classes offer it and who teaches it there is modeled
-/// via ClassSubjects, not duplicated as separate Subjects rows per class.
 model Subjects {
   id           String          @id @default(uuid())
   name         String
@@ -388,10 +372,6 @@ model Subjects {
   @@index([departmentId])
 }
 
-/// Join model representing "this class offers this subject", optionally taught
-/// by a specific staff member. Lessons (scheduled sessions) reference class,
-/// subject, and staff directly for query performance, but should stay
-/// consistent with whichever ClassSubjects row represents the same offering.
 model ClassSubjects {
   id        String    @id @default(uuid())
   classId   String
@@ -484,16 +464,14 @@ model Fees {
   class          Classes?       @relation(fields: [classId], references: [id], onDelete: SetNull)
   feeStructureId String?
   feeStructure   FeeStructures? @relation(fields: [feeStructureId], references: [id], onDelete: SetNull)
+  termId         String?
+  term           Terms?         @relation(fields: [termId], references: [id], onDelete: SetNull)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   receipt        Receipt?       @relation(fields: [receiptId], references: [id], onDelete: SetNull)
   receiptId      String?
 }
 
-/// A record of an actual payment. One Receipt can cover several Fees
-/// (e.g. a parent pays tuition + library fee in one transaction), so the
-/// relation to Fees stays one-to-many. amount is the total the receipt
-/// covers, which should equal the sum of `paid` across its linked Fees.
 model Receipt {
   id            String        @id @default(uuid())
   receiptNumber String        @unique
@@ -535,6 +513,93 @@ model Announcements {
   classId     String?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
+}
+
+model Notifications {
+  id         String                   @id @default(uuid())
+  title      String
+  message    String
+  type       NotificationType
+  priority   NotificationPriority     @default(NORMAL)
+  icon       NotificationIcon
+  bgColor    NotificationColor
+  iconColor  NotificationColor
+  schoolId   String?
+  school     Schools?                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  entityType NotificationEntityType?
+  entityId   String?
+  actionUrl  String?
+  createdAt  DateTime                 @default(now())
+  recipients NotificationRecipients[]
+
+  @@index([schoolId, createdAt])
+}
+
+model NotificationRecipients {
+  id             String        @id @default(uuid())
+  notificationId String
+  notification   Notifications @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           Users         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isRead         Boolean       @default(false)
+  readAt         DateTime?
+  createdAt      DateTime      @default(now())
+
+  @@unique([notificationId, userId])
+  @@index([userId, isRead])
+}
+
+enum NotificationType {
+  ANNOUNCEMENT
+  FEE_REMINDER
+  ATTENDANCE_ALERT
+  EXAM_SCHEDULED
+  TIMETABLE_CHANGE
+  REPORT_CARD_READY
+  GENERAL
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum NotificationEntityType {
+  ANNOUNCEMENT
+  FEE
+  EXAM
+  TEST
+  ASSIGNMENT
+  TIMETABLE
+  EVENT
+  REPORT_CARD
+}
+
+enum NotificationIcon {
+  MEGAPHONE_FILL
+  CASH_COIN
+  CASH_STACK
+  PERSON_FILL_EXCLAMATION
+  JOURNAL_CHECK
+  PENCIL_SQUARE
+  CALENDAR2_WEEK_FILL
+  CALENDAR_EVENT_FILL
+  CLIPBOARD2_CHECK_FILL
+  FILE_EARMARK_BAR_GRAPH_FILL
+  INFO_CIRCLE_FILL
+}
+
+enum NotificationColor {
+  GREEN
+  YELLOW
+  ORANGE
+  RED
+  PURPLE
+  TEAL
+  PINK
+  INDIGO
 }
 
 enum Gender {
