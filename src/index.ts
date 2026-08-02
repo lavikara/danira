@@ -19,6 +19,7 @@ import subjectRouter from './routes/subject/subjectRouter.js';
 import studentRouter from './routes/student/studentRouter.js';
 import timetableRouter from './routes/timetable/timetableRouter.js';
 import attendanceRouter from './routes/attendance/attendanceRouter.js';
+import notificationRouter from './routes/notification/notificationRouter.js';
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -43,6 +44,8 @@ app.use('/staff', staffRouter);
 app.use('/timetable', timetableRouter);
 
 app.use('/student', studentRouter);
+
+app.use('/notification', notificationRouter);
 
 app.use('/auth', authRouter);
 
