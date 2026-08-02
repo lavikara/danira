@@ -92,6 +92,7 @@ export type RelationKeys =
   | 'classes'
   | 'timetables'
   | 'staffAttendance'
+  | 'notifications'
   | 'studentAttendance'
   | 'schoolGroups';
 
