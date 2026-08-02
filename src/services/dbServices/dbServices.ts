@@ -1,5 +1,5 @@
 import { prismaClient } from './dbClient/prismaClient.js';
-import { paginate, FindManyArgs } from '../paginationService/paginate.js';
+import { paginate } from '../paginationService/paginate.js';
 import {
   RelationKeys,
   IncludeQuery,
@@ -21,6 +21,7 @@ import {
   PaginatedTimetableQuery,
   PaginatedStudentAttendanceQuery,
   PaginatedStaffAttendanceQuery,
+  PaginatedNotificationQuery,
 } from '../paginationService/paginate.js';
 
 export const paginatedResource = async (
@@ -32,6 +33,7 @@ export const paginatedResource = async (
     | PaginatedStudentQuery
     | PaginatedStaffQuery
     | PaginatedStudentAttendanceQuery
+    | PaginatedNotificationQuery
     | PaginatedSubjectQuery,
   message: string,
 ) => {
