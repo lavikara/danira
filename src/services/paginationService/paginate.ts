@@ -44,6 +44,10 @@ export type StudentAttendanceQuery = Prisma.StudentAttendanceFindManyArgs;
 
 export type NotificationQuery = Prisma.NotificationsFindManyArgs;
 
+export type FeeStructuresQuery = Prisma.FeeStructuresFindManyArgs;
+
+export type FeeInvoiceQuery = Prisma.FeeInvoiceFindManyArgs;
+
 export type PaginatedQuery<T> = T & PageQuery;
 
 export type PaginatedStudentQuery = PaginatedQuery<StudentQuery>;
@@ -61,6 +65,10 @@ export type PaginatedStaffAttendanceQuery = PaginatedQuery<StaffAttendanceQuery>
 export type PaginatedStudentAttendanceQuery = PaginatedQuery<StudentAttendanceQuery>;
 
 export type PaginatedNotificationQuery = PaginatedQuery<NotificationQuery>;
+
+export type PaginatedFeeStructureQuery = PaginatedQuery<FeeStructuresQuery>;
+
+export type PaginatedFeeInvoiceQuery = PaginatedQuery<FeeInvoiceQuery>;
 
 /**
  * Generic offset-based pagination for any Prisma model delegate
