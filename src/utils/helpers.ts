@@ -33,3 +33,11 @@ export const getRelationKey = (obj: Users | {}): RelationKeys | undefined => {
   const key = relationKeys.find((relationKey: RelationKeys) => relationKey in obj);
   return key;
 };
+
+export const matchEnumValue = <T extends Record<string, string>>(
+  enumObj: T,
+  search: string,
+): T[keyof T] | undefined => {
+  const normalized = search.trim().toUpperCase();
+  return (Object.values(enumObj) as T[keyof T][]).find((value) => value === normalized);
+};

@@ -3,7 +3,7 @@ import { ChartJsData } from '../types/definitions.js';
 export function toChartData(
   items: { label: string; value: number }[],
   datasetLabel: string,
-  borderRadious: number,
+  borderRadius: number,
 ): ChartJsData {
   return {
     labels: items.map((item) => item.label),
@@ -23,8 +23,44 @@ export function toChartData(
           '#84CC16',
           '#F97316',
         ],
-        borderRadius: borderRadious,
+        borderRadius,
       },
     ],
-  };
+  } as ChartJsData;
+}
+
+export function toMultiSeriesChartData(
+  labels: string[],
+  series: { label: string; data: number[]; color?: string; fill?: boolean }[],
+  borderRadius?: number,
+): ChartJsData {
+  const palette = [
+    'rgba(37, 99, 235, 1)',
+    'rgba(16, 185, 129, 1)',
+    'rgba(245, 158, 11, 1)',
+    'rgba(139, 92, 246, 1)',
+    'rgba(239, 68, 68, 1)',
+    'rgba(6, 182, 212, 1)',
+    'rgba(236, 72, 153, 1)',
+    'rgba(14, 165, 233, 1)',
+    'rgba(132, 204, 22, 1)',
+    'rgba(249, 115, 22, 1)',
+  ];
+
+  return {
+    labels,
+    datasets: series.map((s, i) => {
+      const color = s.color ?? palette[i % palette.length];
+
+      return {
+        label: s.label,
+        data: s.data,
+        backgroundColor: [`${color}25`, `${color}50`, `${color}75`, color],
+        borderColor: color,
+        borderRadius,
+        tension: 0.35,
+        fill: s.fill ?? false,
+      };
+    }),
+  } as ChartJsData;
 }

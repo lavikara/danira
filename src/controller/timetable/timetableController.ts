@@ -6,15 +6,15 @@ import { paginatedResource } from '../../services/dbServices/dbServices.js';
 import { queryTimetableById } from '../../services/timetableService/timetableByIdService.js';
 import { PaginatedTimetableQuery } from '../../services/paginationService/paginate.js';
 
-const TIMETABLE_SORTABLE_FIELDS = ['name', 'class'] as const;
+const TIMETABLE_SORTABLE_FIELDS = ['name', 'classInfo'] as const;
 
 const resolveSort = createSortWhitelist(TIMETABLE_SORTABLE_FIELDS, 'name', {
   name: (order) => ({ name: order }),
-  class: (order) => ({ class: { name: order } }),
+  classInfo: (order) => ({ classInfo: { name: order } }),
 });
 
 const TIMETABLE_INCLUDE = {
-  class: {
+  classInfo: {
     select: { id: true, name: true, type: true },
   },
   gradeYear: {
@@ -51,7 +51,7 @@ const TIMETABLE_INCLUDE = {
               },
             },
           },
-          class: {
+          classInfo: {
             select: { id: true, name: true },
           },
         },
@@ -77,7 +77,7 @@ const buildTimetableSearchOr = (search: string) => {
 
   return [
     { name: { contains: search, mode: 'insensitive' } },
-    { class: { OR: classOr } },
+    { classInfo: { OR: classOr } },
     { term: { name: { contains: search, mode: 'insensitive' } } },
   ];
 };
@@ -111,7 +111,9 @@ const shapeTimetable = (timetable: any) => {
           }
         : null,
       teacher,
-      class: lesson?.class ? { id: lesson.class.id, name: lesson.class.name } : null,
+      classInfo: lesson?.classInfo
+        ? { id: lesson.classInfo.id, name: lesson.classInfo.name }
+        : null,
       status: lesson?.status ?? null,
     };
   });
@@ -136,7 +138,9 @@ const shapeTimetable = (timetable: any) => {
               name: `${lesson.staff.users?.firstName ?? ''} ${lesson.staff.users?.lastName ?? ''}`.trim(),
             }
           : null,
-        class: lesson.class ? { id: lesson.class.id, name: lesson.class.name } : null,
+        classInfo: lesson.classInfo
+          ? { id: lesson.classInfo.id, name: lesson.classInfo.name }
+          : null,
       });
     }
   }
@@ -146,8 +150,12 @@ const shapeTimetable = (timetable: any) => {
     name: timetable.name,
     status: timetable.status,
     schoolId: timetable.schoolId,
-    class: timetable.class
-      ? { id: timetable.class.id, name: timetable.class.name, type: timetable.class.type }
+    classInfo: timetable.classInfo
+      ? {
+          id: timetable.classInfo.id,
+          name: timetable.classInfo.name,
+          type: timetable.classInfo.type,
+        }
       : null,
     gradeYear: timetable.gradeYear
       ? { id: timetable.gradeYear.id, level: timetable.gradeYear.level }

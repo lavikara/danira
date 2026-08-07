@@ -135,6 +135,17 @@ function paymentSplit(
 }
 
 /**
+ * Rolls up a set of individual line-item statuses into one invoice-level
+ * FeeStatus: PAID only if every item is fully paid off, UNPAID only if
+ * nothing at all has been paid, PARTIAL for everything in between.
+ */
+function invoiceStatusFor(totalPaid: number, totalAmount: number): 'PAID' | 'PARTIAL' | 'UNPAID' {
+  if (totalAmount <= 0 || totalPaid >= totalAmount) return 'PAID';
+  if (totalPaid <= 0) return 'UNPAID';
+  return 'PARTIAL';
+}
+
+/**
  * FeeStructures.classType is typed as the `ClassType` enum, but a school's
  * own `type` field is the (structurally identical, but nominally distinct)
  * `SchoolType` enum — Prisma generates these as separate TS enums, so they
@@ -321,6 +332,7 @@ async function clearDatabase(): Promise<void> {
   await prismaClient.lessonAttendance.deleteMany();
   await prismaClient.reportCards.deleteMany();
   await prismaClient.fees.deleteMany();
+  await prismaClient.feeInvoice.deleteMany();
   await prismaClient.receipt.deleteMany();
   await prismaClient.feeStructures.deleteMany();
   await prismaClient.events.deleteMany();
@@ -558,7 +570,7 @@ async function main(): Promise<void> {
   const schoolTypeById = new Map(schools.map((s) => [s.id, s.type]));
   const schoolShortNameById = new Map(schools.map((s, i) => [s.id, schoolDefs[i].shortName]));
 
-  // ── 4b. FEE STRUCTURES (90) ──────────────────────────────────────────────
+  // ── 4b. FEE STRUCTURES (100) ─────────────────────────────────────────────
   console.log('💵  Seeding FeeStructures …');
 
   const compulsoryFeeTemplates = [
@@ -610,6 +622,11 @@ async function main(): Promise<void> {
       description: 'Optional on-campus boarding accommodation for the term.',
       base: { PRIMARY: 60_000, SECONDARY: 75_000, TERTIARY: 90_000 },
     },
+    {
+      name: 'Field Trip Fee',
+      description: 'Optional termly educational excursion or field trip.',
+      base: { PRIMARY: 6_000, SECONDARY: 8_000, TERTIARY: 10_000 },
+    },
   ] as const;
 
   const feeStructures = (
@@ -622,6 +639,7 @@ async function main(): Promise<void> {
               data: {
                 name: tpl.name,
                 description: tpl.description,
+                currency: 'NGN',
                 category: FeeCategory.COMPULSORY,
                 amount: tpl.base[classType],
                 classType,
@@ -635,6 +653,7 @@ async function main(): Promise<void> {
               data: {
                 name: tpl.name,
                 description: tpl.description,
+                currency: 'NGN',
                 category: FeeCategory.OPTIONAL,
                 amount: tpl.base[classType],
                 classType,
@@ -2227,15 +2246,23 @@ async function main(): Promise<void> {
     )
   ).flat();
 
-  // ── 19. FEES + RECEIPTS (billed per term: previous + current) ────────────
-  //   Every student is now billed for BOTH their completed previous term
-  //   and their ongoing current term (Fees.termId ties each bill to one).
-  //   Whatever was left PARTIAL/UNPAID on the previous term's Fees rows
-  //   simply stays that way — nothing "clears" it — so a student resuming
-  //   for the current term can still be owing from last term, and the
-  //   total amount they owe across terms is just `sum(outstanding)` over
-  //   all their Fees rows.
-  console.log('💰  Seeding Fees + Receipts …');
+  // ── 19. FEE INVOICES + FEES + RECEIPTS (billed per term) ─────────────────
+  //   Every student gets ONE FeeInvoice PER TERM — a completed invoice for
+  //   the previous, now-ENDED term (which may still be owing) and a fresh
+  //   invoice for the ONGOING current term. Every individual charge for
+  //   that term (Tuition, Library, Boarding, Field Trip, etc.) is created
+  //   as a `Fees` line item attached to its invoice via `invoiceId`.
+  //   `invoice.fees` is therefore the "array of fees a student is paying"
+  //   for that specific term, with a rolled-up total/paid/outstanding on
+  //   the invoice itself. Whatever was left PARTIAL/UNPAID on the previous
+  //   term's invoice simply stays that way — nothing "clears" it — so a
+  //   student resuming for the current term still shows a separate,
+  //   still-outstanding invoice from last term, and the total amount they
+  //   owe across terms is just `sum(invoice.totalOutstanding)` over all
+  //   their FeeInvoice rows. `@@unique([studentId, termId])` on FeeInvoice
+  //   guarantees a student can never end up with two invoices for the same
+  //   term.
+  console.log('💰  Seeding FeeInvoices + Fees + Receipts …');
 
   const bursarBySchoolId = new Map<string, (typeof extraStaffs)[number]>();
   schools.forEach((school) => {
@@ -2254,8 +2281,81 @@ async function main(): Promise<void> {
     return cycle[seed % cycle.length];
   }
 
+  /**
+   * Decides whether a given OPTIONAL FeeStructure genuinely applies to this
+   * student, instead of every student getting one optional fee at random.
+   * Boarding only makes sense for a student actually living on campus;
+   * the school bus only makes sense for one commuting from off campus.
+   * Lunch / Extracurricular / Field Trip are true opt-ins, so a
+   * deterministic (but varied) subset of students sign up for each.
+   */
+  function isOptionalFeeApplicable(
+    structureName: string,
+    student: { accomodation: Accomodation | null },
+    seed: number,
+  ): boolean {
+    switch (structureName) {
+      case 'Boarding Fee':
+        return student.accomodation === Accomodation.ONCAMPUS;
+      case 'Transportation Fee (School Bus)':
+        // Most off-campus students take the bus; a few make their own way.
+        return student.accomodation === Accomodation.OFFCAMPUS && seed % 3 !== 0;
+      case 'Lunch Fee':
+        return seed % 5 !== 4; // ~80% opt in
+      case 'Extracurricular Activities Fee':
+        return seed % 2 === 0; // ~50% opt in
+      case 'Field Trip Fee':
+        return seed % 10 !== 9; // ~90% opt in (school-wide trip)
+      default:
+        return true;
+    }
+  }
+
+  /** One planned fee-item charge, computed before anything is written to the DB. */
+  type PlannedFeeItem = {
+    structure: (typeof feeStructures)[number];
+    category: 'COMPULSORY' | 'OPTIONAL';
+    amount: number;
+    status: 'PAID' | 'PARTIAL' | 'UNPAID';
+    paid: number;
+    outstanding: number;
+    seed: number;
+  };
+
   let receiptsCreated = 0;
+  let feeInvoicesCreated = 0;
   let studentsCarryingPreviousBalance = 0;
+
+  /** Guards the "one FeeInvoice per student per term" invariant at seed time,
+   *  so a coding mistake fails fast with a readable message here instead of
+   *  a cryptic Postgres unique-constraint error from `@@unique([studentId,
+   *  termId])` three layers down. */
+  const billedInvoiceKeys = new Set<string>();
+  function claimInvoiceSlot(studentId: string, termId: string): void {
+    const key = `${studentId}:${termId}`;
+    if (billedInvoiceKeys.has(key)) {
+      throw new Error(
+        `Attempted to create a second FeeInvoice for student ${studentId} + term ${termId} — a student may have exactly one invoice per term.`,
+      );
+    }
+    billedInvoiceKeys.add(key);
+  }
+
+  /** One student's previous + current term invoices, kept around purely so we
+   *  can print a real fee breakdown after seeding (see 19a below). */
+  const invoicesByStudentId = new Map<
+    string,
+    {
+      previous: {
+        invoice: Awaited<ReturnType<typeof prismaClient.feeInvoice.create>>;
+        feeItems: Awaited<ReturnType<typeof prismaClient.fees.create>>[];
+      };
+      current: {
+        invoice: Awaited<ReturnType<typeof prismaClient.feeInvoice.create>>;
+        feeItems: Awaited<ReturnType<typeof prismaClient.fees.create>>[];
+      };
+    }
+  >();
 
   const fees = (
     await Promise.all(
@@ -2304,34 +2404,105 @@ async function main(): Promise<void> {
           return receipt.id;
         };
 
-        /** Bills every structure in `catalog` for a single term and returns the created Fees rows. */
+        /**
+         * Bills every structure in `catalog` for a SINGLE term: first plans
+         * every applicable line item's amount/paid/outstanding (so the
+         * invoice-level totals are known up front), creates ONE FeeInvoice
+         * for this student + this term with those totals, then creates
+         * each `Fees` row attached to that invoice (each optionally
+         * spawning its own Receipt when something was paid on it). Returns
+         * the created invoice plus its fee items.
+         */
         const billTerm = async (
           termLabel: 'previous' | 'current',
           termId: string,
           statusFor: (seed: number) => 'PAID' | 'PARTIAL' | 'UNPAID',
           seedOffset: number,
         ) => {
-          const compulsoryFees = await Promise.all(
-            catalog.compulsory.map(async (structure, si) => {
+          const plannedCompulsoryItems: PlannedFeeItem[] = catalog.compulsory.map(
+            (structure, si) => {
               const seed = seedOffset + si;
               const status = statusFor(seed);
               const amount = structure.amount + classDifferential;
               const { paid, outstanding } = paymentSplit(amount, status, seed);
-              const receiptId = await receiptIdFor(termLabel, status, seed, paid);
+              return {
+                structure,
+                category: 'COMPULSORY' as const,
+                amount,
+                status,
+                paid,
+                outstanding,
+                seed,
+              };
+            },
+          );
+
+          const plannedOptionalItems: PlannedFeeItem[] = catalog.optional
+            .map((structure, oi) => ({
+              structure,
+              seed: seedOffset + catalog.compulsory.length + oi,
+            }))
+            .filter(({ structure, seed }) => isOptionalFeeApplicable(structure.name, student, seed))
+            .map(({ structure, seed }) => {
+              const status = statusFor(seed);
+              const amount = structure.amount + classDifferential;
+              const { paid, outstanding } = paymentSplit(amount, status, seed);
+              return {
+                structure,
+                category: 'OPTIONAL' as const,
+                amount,
+                status,
+                paid,
+                outstanding,
+                seed,
+              };
+            });
+
+          const plannedItems = [...plannedCompulsoryItems, ...plannedOptionalItems];
+
+          const totalAmount = plannedItems.reduce((sum, item) => sum + item.amount, 0);
+          const totalPaid = plannedItems.reduce((sum, item) => sum + item.paid, 0);
+          const totalOutstanding = plannedItems.reduce((sum, item) => sum + item.outstanding, 0);
+
+          claimInvoiceSlot(student.id, termId);
+
+          const invoice = await prismaClient.feeInvoice.create({
+            data: {
+              invoiceNumber: `INV-${schoolId.slice(0, 4).toUpperCase()}-${
+                termLabel === 'previous' ? 'P' : 'C'
+              }-${String(seedOffset + 1).padStart(5, '0')}`,
+              totalAmount,
+              totalPaid,
+              totalOutstanding,
+              currency: 'NGN',
+              status: invoiceStatusFor(totalPaid, totalAmount),
+              studentId: student.id,
+              schoolId,
+              classId: student.classId,
+              termId,
+            },
+          });
+          feeInvoicesCreated += 1;
+
+          const feeItems = await Promise.all(
+            plannedItems.map(async (item) => {
+              const receiptId = await receiptIdFor(termLabel, item.status, item.seed, item.paid);
               return prismaClient.fees.create({
                 data: {
-                  name: structure.name,
-                  description: structure.description,
+                  name: item.structure.name,
+                  description: item.structure.description,
                   currency: 'NGN',
-                  amount,
-                  paid,
-                  outstanding,
-                  category: FeeCategory.COMPULSORY,
-                  status,
+                  amount: item.amount,
+                  paid: item.paid,
+                  outstanding: item.outstanding,
+                  category:
+                    item.category === 'COMPULSORY' ? FeeCategory.COMPULSORY : FeeCategory.OPTIONAL,
+                  status: item.status,
+                  invoiceId: invoice.id,
                   studentId: student.id,
                   schoolId,
                   classId: student.classId,
-                  feeStructureId: structure.id,
+                  feeStructureId: item.structure.id,
                   termId,
                   receiptId,
                 },
@@ -2339,64 +2510,93 @@ async function main(): Promise<void> {
             }),
           );
 
-          const optionalStructure = catalog.optional[i % catalog.optional.length];
-          const optionalSeed = seedOffset + catalog.compulsory.length;
-          const optionalStatus = statusFor(optionalSeed);
-          const optionalAmount = optionalStructure.amount + classDifferential;
-          const optionalSplit = paymentSplit(optionalAmount, optionalStatus, optionalSeed);
-          const optionalReceiptId = await receiptIdFor(
-            termLabel,
-            optionalStatus,
-            optionalSeed,
-            optionalSplit.paid,
-          );
-          const optionalFee = await prismaClient.fees.create({
-            data: {
-              name: optionalStructure.name,
-              description: optionalStructure.description,
-              amount: optionalAmount,
-              paid: optionalSplit.paid,
-              outstanding: optionalSplit.outstanding,
-              currency: 'NGN',
-              category: FeeCategory.OPTIONAL,
-              status: optionalStatus,
-              studentId: student.id,
-              schoolId,
-              classId: student.classId,
-              feeStructureId: optionalStructure.id,
-              termId,
-              receiptId: optionalReceiptId,
-            },
-          });
-
-          return [...compulsoryFees, optionalFee];
+          return { invoice, feeItems };
         };
 
         // Every 4th student fully cleared their previous term's fees; everyone
         // else has a realistic PAID/PARTIAL/UNPAID mix — and PARTIAL/UNPAID
-        // there means a genuine carried-over balance into the current term.
+        // there means a genuine carried-over balance on a still-outstanding
+        // PREVIOUS-term invoice, distinct from the current term's own invoice.
         const isFullyPaidStudent = i % 4 === 0;
-        const previousTermFees = await billTerm(
+        const previousResult = await billTerm(
           'previous',
           previousTerm.id,
           (seed) => (isFullyPaidStudent ? 'PAID' : feeStatus(seed)),
           i * 10,
         );
-        const currentTermFees = await billTerm(
+        const currentResult = await billTerm(
           'current',
           currentTerm.id,
           currentTermFeeStatus,
           i * 10 + 100,
         );
 
-        if (previousTermFees.some((f) => f.outstanding > 0)) {
+        invoicesByStudentId.set(student.id, { previous: previousResult, current: currentResult });
+
+        if (previousResult.feeItems.some((f) => f.outstanding > 0)) {
           studentsCarryingPreviousBalance += 1;
         }
 
-        return [...previousTermFees, ...currentTermFees];
+        return [...previousResult.feeItems, ...currentResult.feeItems];
       }),
     )
   ).flat();
+
+  // ── 19a. SAMPLE FEE BREAKDOWN (verification output) ──────────────────────
+  //   Prints one student's full itemized bill for each term's invoice
+  //   separately (Tuition, Library, Boarding, Field Trip, etc.) — so you
+  //   can see exactly what each `FeeInvoice.fees` array looks like for a
+  //   real student instead of just trusting the schema.
+  console.log('🧾  Sample fee breakdown …');
+
+  function formatNaira(amount: number): string {
+    return `₦${amount.toLocaleString('en-NG')}`;
+  }
+
+  function printInvoiceBreakdown(
+    label: string,
+    entry: {
+      invoice: {
+        invoiceNumber: string;
+        totalAmount: number;
+        totalPaid: number;
+        totalOutstanding: number;
+        status: string;
+      };
+      feeItems: {
+        name: string;
+        amount: number;
+        paid: number;
+        outstanding: number;
+        status: string;
+      }[];
+    },
+  ): void {
+    console.log(`  ${label} — Invoice ${entry.invoice.invoiceNumber} [${entry.invoice.status}]`);
+    entry.feeItems.forEach((item) => {
+      console.log(
+        `    • ${item.name}: ${formatNaira(item.amount)} — paid ${formatNaira(item.paid)}, owing ${formatNaira(item.outstanding)} [${item.status}]`,
+      );
+    });
+    console.log(
+      `    Invoice total: ${formatNaira(entry.invoice.totalAmount)}  |  Paid: ${formatNaira(entry.invoice.totalPaid)}  |  Outstanding: ${formatNaira(entry.invoice.totalOutstanding)}`,
+    );
+  }
+
+  // Pick a student who is actually carrying a balance from last term, so the
+  // example shows a previous-term invoice with a real outstanding amount.
+  const sampleStudent =
+    students.find((s) => {
+      const entry = invoicesByStudentId.get(s.id);
+      return entry && entry.previous.invoice.totalOutstanding > 0;
+    }) ?? students[0];
+  const sampleEntry = invoicesByStudentId.get(sampleStudent.id);
+
+  if (sampleEntry) {
+    console.log(`  Student ${sampleStudent.studentId}:`);
+    printInvoiceBreakdown('Previous term', sampleEntry.previous);
+    printInvoiceBreakdown('Current term', sampleEntry.current);
+  }
 
   // ── 19b. TIMETABLES + TIMETABLE PERIODS (20 timetables) ──────────────────
   console.log('🗓️   Seeding Timetables …');
@@ -2863,8 +3063,9 @@ async function main(): Promise<void> {
   StaffAttendance         ${staffAttendanceRecords.length}  (every staff member × ${STAFF_ATTENDANCE_DAYS} school days evenly sampled across last/this/next month)
   LessonAttendance        ${lessonAttendanceRecords.length}  (one per Lesson, clocked by the staff member assigned to teach it, dated with that lesson's attendance date)
   ReportCards             ${reportCards.length}  (2 per student — a COMPLETED report card for last term's exam + an INCOMPLETE report card for this term, in progress toward the upcoming exam)
-  Fees                    ${fees.length}  (${compulsoryFeeTemplates.length} compulsory + 1 optional per student PER TERM — previous term + current term, each tagged with termId; every 4th student cleared last term in full, ${studentsCarryingPreviousBalance} students still owe a balance carried over from their previous term)
-  Receipts                ${receiptsCreated}  (one per PAID/PARTIAL fee, tagged with student, school, payment method, and the school's own Bursar)
+  FeeInvoices             ${feeInvoicesCreated}  (1 per student PER TERM — a previous-term invoice + a current-term invoice, each with its own rolled-up totalAmount/totalPaid/totalOutstanding and its own array of Fees line items; enforced by @@unique([studentId, termId]))
+  Fees                    ${fees.length}  (${compulsoryFeeTemplates.length} compulsory fees per invoice + only the optional fees that genuinely apply per student — Boarding for on-campus students, Transportation for off-campus commuters, Lunch/Extracurricular/Field Trip on a deterministic opt-in mix; every Fees row belongs to exactly one FeeInvoice via invoiceId; every 4th student cleared last term in full, ${studentsCarryingPreviousBalance} students still owe a balance carried over from their previous term's invoice)
+  Receipts                ${receiptsCreated}  (one per PAID/PARTIAL fee line item, tagged with student, school, payment method, and the school's own Bursar)
   Timetables              ${timetables.length}  (1 per class, anchored to its school/gradeYear/term)
   TimetablePeriods        ${lessons.length + timetables.length}  (1 per lesson on that class's timetable + 1 Monday assembly per class)
   Events                  10
@@ -2874,7 +3075,10 @@ async function main(): Promise<void> {
 
   Every User row now carries a "ratings" score (3.0–5.0).
   Every student has an upcoming Exam (Students.examId), a previous-term
-  COMPLETED report card, and a current-term INCOMPLETE report card.
+  COMPLETED report card, a current-term INCOMPLETE report card, and TWO
+  FeeInvoice rows — one for their previous term, one for their current term
+  — each holding its own array of Fees line items (Tuition, Library,
+  Boarding, Field Trip, etc.).
   Super admin login: kuku@yopmail.com / Password123!
   `);
 }

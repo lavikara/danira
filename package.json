@@ -8,6 +8,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc -p tsconfig.json",
     "prisma:seed": "prisma migrate reset --force && prisma db seed",
+    "prisma:reset": "npx prisma migrate reset",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "npx prisma migrate dev --name dev_migration",
     "prisma:studio": "npx prisma studio"

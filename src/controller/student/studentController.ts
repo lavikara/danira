@@ -6,25 +6,14 @@ import { getStudentAnalyticsData } from '../../services/studentService/studentsA
 import { PaginatedStudentQuery } from '../../services/paginationService/paginate.js';
 import { toChartData } from '../../utils/analytics.js';
 
-type FeeStatusSummary = 'PAID' | 'PARTIAL' | 'UNPAID';
-
 const CHART_BORDER_RADIUS = 7;
 
-const STUDENTS_SORTABLE_FIELDS = ['department', 'class'] as const;
+const STUDENTS_SORTABLE_FIELDS = ['department', 'classInfo'] as const;
 
-const resolveSort = createSortWhitelist(STUDENTS_SORTABLE_FIELDS, 'class', {
-  class: (order) => ({ class: { name: order } }),
+const resolveSort = createSortWhitelist(STUDENTS_SORTABLE_FIELDS, 'classInfo', {
+  classInfo: (order) => ({ classInfo: { name: order } }),
   department: (order) => ({ department: { name: order } }),
 });
-
-const resolveFeeStatus = (fees: { status: string }[]): FeeStatusSummary => {
-  if (fees.length === 0) return 'UNPAID';
-  const allPaid = fees.every((fee) => fee.status === 'PAID');
-  if (allPaid) return 'PAID';
-  const allUnpaid = fees.every((fee) => fee.status === 'UNPAID');
-  if (allUnpaid) return 'UNPAID';
-  return 'PARTIAL';
-};
 
 const resolveAttendancePercentage = (attendances: { attendance: string }[]): number | null => {
   if (attendances.length === 0) return null;
@@ -46,7 +35,7 @@ export const allSingleSchoolStudent = async (req: Request, res: Response, next: 
 
   if (search) {
     where.OR = [
-      { class: { name: { contains: search as string, mode: 'insensitive' } } },
+      { classInfo: { name: { contains: search as string, mode: 'insensitive' } } },
       { studentId: { contains: search as string, mode: 'insensitive' } },
       {
         users: {
@@ -69,8 +58,8 @@ export const allSingleSchoolStudent = async (req: Request, res: Response, next: 
       users: { omit: { password: true } },
       subjects: { select: { name: true } },
       department: { select: { name: true } },
-      class: { select: { id: true, name: true } },
-      fees: { select: { status: true } },
+      classInfo: { select: { id: true, name: true } },
+      fees: true,
       attendances: { select: { attendance: true } },
     },
   } satisfies PaginatedStudentQuery;
@@ -81,9 +70,8 @@ export const allSingleSchoolStudent = async (req: Request, res: Response, next: 
     throw new Error('Unable to fetch students');
   }
 
-  const data = result.data.map(({ fees, attendances, ...student }) => ({
+  const data = result.data.map(({ attendances, ...student }) => ({
     ...student,
-    fees: resolveFeeStatus(fees),
     attendances: resolveAttendancePercentage(attendances),
   }));
 
@@ -174,7 +162,7 @@ export const allGroupSchoolStudent = async (req: Request, res: Response, next: N
 
   if (search) {
     where.OR = [
-      { class: { name: { contains: search as string, mode: 'insensitive' } } },
+      { classInfo: { name: { contains: search as string, mode: 'insensitive' } } },
       { studentId: { contains: search as string, mode: 'insensitive' } },
       {
         users: {
@@ -197,8 +185,8 @@ export const allGroupSchoolStudent = async (req: Request, res: Response, next: N
       users: { omit: { password: true } },
       subjects: { select: { name: true } },
       department: { select: { name: true } },
-      class: { select: { id: true, name: true } },
-      fees: { select: { status: true } },
+      classInfo: { select: { id: true, name: true } },
+      fees: true,
       attendances: { select: { attendance: true } },
     },
   } satisfies PaginatedStudentQuery;
@@ -209,9 +197,8 @@ export const allGroupSchoolStudent = async (req: Request, res: Response, next: N
     throw new Error('Unable to fetch students');
   }
 
-  const data = result.data.map(({ fees, attendances, ...student }) => ({
+  const data = result.data.map(({ attendances, ...student }) => ({
     ...student,
-    fees: resolveFeeStatus(fees),
     attendances: resolveAttendancePercentage(attendances),
   }));
 

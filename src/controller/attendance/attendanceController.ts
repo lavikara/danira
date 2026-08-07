@@ -216,7 +216,7 @@ export const allSingleSchoolStudentAttendance = async (
           users: { omit: { password: true } },
         },
       },
-      lesson: { include: { class: true } },
+      lesson: { include: { classInfo: true } },
     },
   };
 
@@ -399,7 +399,7 @@ export const allGroupSchoolStudentAttendance = async (
           users: { omit: { password: true } },
         },
       },
-      lesson: { include: { class: true } },
+      lesson: { include: { classInfo: true } },
     },
   };
 

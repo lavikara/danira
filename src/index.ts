@@ -12,6 +12,7 @@ const PORT = process.env.SERVER_PORT;
 import daniraRoute from './routes/danira/daniraRouter.js';
 import authRouter from './routes/auth/authRouter.js';
 import userRouter from './routes/user/userRouter.js';
+import feeRouter from './routes/fee/feeRouter.js';
 import schoolRouter from './routes/school/schoolRouter.js';
 import classRouter from './routes/class/classRouter.js';
 import staffRouter from './routes/staff/staffRouter.js';
@@ -20,6 +21,7 @@ import studentRouter from './routes/student/studentRouter.js';
 import timetableRouter from './routes/timetable/timetableRouter.js';
 import attendanceRouter from './routes/attendance/attendanceRouter.js';
 import notificationRouter from './routes/notification/notificationRouter.js';
+import paymentRouter from './routes/payment/paymentRouter.js';
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -34,6 +36,10 @@ app.use('/user', userRouter);
 app.use('/attendance', attendanceRouter);
 
 app.use('/school', schoolRouter);
+
+app.use('/fee', feeRouter);
+
+app.use('/payment', paymentRouter);
 
 app.use('/subject', subjectRouter);
 
