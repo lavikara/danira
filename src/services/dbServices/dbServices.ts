@@ -21,6 +21,8 @@ import {
   PaginatedTimetableQuery,
   PaginatedStudentAttendanceQuery,
   PaginatedStaffAttendanceQuery,
+  PaginatedFeeInvoiceQuery,
+  PaginatedFeeStructureQuery,
   PaginatedNotificationQuery,
 } from '../paginationService/paginate.js';
 
@@ -33,7 +35,9 @@ export const paginatedResource = async (
     | PaginatedStudentQuery
     | PaginatedStaffQuery
     | PaginatedStudentAttendanceQuery
+    | PaginatedFeeStructureQuery
     | PaginatedNotificationQuery
+    | PaginatedFeeInvoiceQuery
     | PaginatedSubjectQuery,
   message: string,
 ) => {
