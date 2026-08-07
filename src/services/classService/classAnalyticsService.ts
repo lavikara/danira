@@ -17,7 +17,7 @@ export interface ClassAnalyticsResult {
 export async function getClassAnalyticsData(
   classWhere: Record<string, any>,
 ): Promise<ClassAnalyticsResult> {
-  const studentClassFilter = { class: classWhere };
+  const studentClassFilter = { classInfo: classWhere };
 
   const [
     totalClasses,

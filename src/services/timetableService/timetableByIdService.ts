@@ -37,14 +37,14 @@ export const queryTimetableById = async (
                   },
                 },
               },
-              class: {
+              classInfo: {
                 select: { id: true, name: true },
               },
             },
           },
         },
       },
-      class: true,
+      classInfo: true,
       gradeYear: true,
       term: true,
     },
