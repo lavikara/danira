@@ -90,6 +90,8 @@ export type RelationKeys =
   | 'schools'
   | 'subjects'
   | 'classes'
+  | 'feeStructures'
+  | 'feeInvoice'
   | 'timetables'
   | 'staffAttendance'
   | 'notifications'
@@ -168,9 +170,18 @@ interface ChartDataset {
   borderRadius?: number;
 }
 
+interface LineChartDataset {
+  label: string;
+  data: number[];
+  backgroundColor: string;
+  borderColor: string;
+  borderRadius?: number;
+  fill: boolean;
+}
+
 export interface ChartJsData {
   labels: string[];
-  datasets: ChartDataset[];
+  datasets: ChartDataset[] | LineChartDataset[];
 }
 
 export interface PaginationMeta {
