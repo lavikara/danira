@@ -2,6 +2,7 @@ import { type Request, type Response, type NextFunction } from 'express';
 import { paginatedResource } from '../../services/dbServices/dbServices.js';
 import { createSortWhitelist } from '../../middleware/pagination/pagination.js';
 import { getNotificationAnalyticsData } from '../../services/notificationService/notificationAnalyticsService.js';
+import { matchEnumValue } from '../../utils/helpers.js';
 import {
   Prisma,
   NotificationType,
@@ -17,14 +18,6 @@ const resolveSort = createSortWhitelist(NOTIFICATION_SORTABLE_FIELDS, 'createdAt
   entityType: (order) => ({ entityType: order }),
   priority: (order) => ({ priority: order }),
 });
-
-function matchEnumValue<T extends Record<string, string>>(
-  enumObj: T,
-  search: string,
-): T[keyof T] | undefined {
-  const normalized = search.trim().toUpperCase();
-  return (Object.values(enumObj) as T[keyof T][]).find((value) => value === normalized);
-}
 
 function buildNotificationSearchOr(search: string): Prisma.NotificationsWhereInput[] {
   const orConditions: Prisma.NotificationsWhereInput[] = [
