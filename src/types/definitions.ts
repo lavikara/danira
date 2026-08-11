@@ -24,7 +24,7 @@ export interface UserToRelation {
     admins?: Admins;
     staffs?: Staffs;
     students?: Students;
-    schools?: Schools;
+    school?: Schools;
   };
 }
 
@@ -35,7 +35,7 @@ export interface AdminToUser {
 }
 
 export interface UniqueSchoolData {
-  schools: Schools;
+  school: Schools;
   schoolGroups?: SchoolGroups;
   users?: Users;
   admins?: Admins;
@@ -44,7 +44,7 @@ export interface UniqueSchoolData {
 export interface SchoolAdminData {
   userId: string;
   schoolIds: string[];
-  schools: {
+  school: {
     connect: {
       id: string;
     };
@@ -61,7 +61,7 @@ export interface SchoolUpdateData {
   where: { id: any };
   data: {
     admins?: { connect: { id: string } };
-    schools?: { connect: { id: string } };
+    school?: { connect: { id: string } };
     groupId?: { connect: { id: string } };
     status?: string;
   };
@@ -92,6 +92,7 @@ export type RelationKeys =
   | 'classes'
   | 'feeStructures'
   | 'feeInvoice'
+  | 'boardingHouseMatrons'
   | 'timetables'
   | 'staffAttendance'
   | 'notifications'
@@ -108,8 +109,13 @@ export type IncludeQuery = {
   staffs?: boolean;
   guardians?: boolean;
   users?: boolean;
-  schools?: boolean;
+  school?: boolean;
   group?: boolean;
+};
+
+export type SelectQuery = {
+  id?: boolean;
+  boardingHouseId?: boolean;
 };
 
 export type OmitQuery = {
@@ -130,8 +136,8 @@ export interface FindFirst {
 
 export interface FindMany {
   table: RelationKeys;
-  where: TableColumn;
-  whereArray: string[];
+  where: Record<string, any>;
+  select?: SelectQuery;
   include?: IncludeQuery;
 }
 
