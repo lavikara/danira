@@ -14,11 +14,20 @@ export const loggedInUser = async (
     const error = new ApiError(401, 'Unauthorised');
     return next(error);
   }
-  const userQuery = await findUniqueUser(userKey as RelationKeys, 'id', userId as string, {
-    users: true,
-    schools: true,
-    group: true,
-  });
+  let include;
+  if (userKey === 'admins') {
+    include = {
+      users: true,
+      school: true,
+      group: true,
+    };
+  } else {
+    include = {
+      users: true,
+      school: true,
+    };
+  }
+  const userQuery = await findUniqueUser(userKey as RelationKeys, 'id', userId as string, include);
 
   if (userQuery) {
     delete (userQuery as any)[userKey]?.users?.password;
