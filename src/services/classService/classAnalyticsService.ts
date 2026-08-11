@@ -48,9 +48,6 @@ export async function getClassAnalyticsData(
     }),
   ]);
 
-  // Performance = average of test/assignment/exam scores across report cards
-  // for students in scope. attendanceScore on ReportCards is left out here
-  // since we compute a real attendance figure from the Attendance model below.
   const { testScore, assignmentScore, examScore } = reportCardAgg._avg;
   const performanceComponents = [testScore, assignmentScore, examScore].filter(
     (score): score is number => score !== null,
