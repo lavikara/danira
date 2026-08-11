@@ -68,7 +68,7 @@ export const schoolCreatedBySignupMail = (data: SignupSchoolInput) => {
 export const schoolApprovedMail = (data: UniqueSchoolData, urlData: { token: string }) => {
   const createSchoolMailOptions = {
     from: '"Danira Admin" <no-reply@danira.com>',
-    to: `${data.schools.email}`,
+    to: `${data.school.email}`,
     subject: 'Your School Account is under review',
     html: schoolApprovedTemplate(data, urlData),
   };

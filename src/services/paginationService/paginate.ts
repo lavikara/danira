@@ -6,12 +6,8 @@ export type PaginatableDelegate = {
   count: (args: { where?: any }) => Promise<number>;
 };
 
-// Pulls the exact findMany args type Prisma generated for this specific delegate
-// (its own WhereInput, OrderBy, Select, Include — no manual union needed).
 export type FindManyArgs<D extends PaginatableDelegate> = Parameters<D['findMany']>[0];
 
-// Infers the exact result row shape based on whatever select/include the
-// caller passed for THIS call — same way Prisma's own client does it.
 type FindManyResult<D extends PaginatableDelegate> = Awaited<ReturnType<D['findMany']>>[number];
 
 export interface PaginationQuery {
@@ -48,6 +44,8 @@ export type FeeStructuresQuery = Prisma.FeeStructuresFindManyArgs;
 
 export type FeeInvoiceQuery = Prisma.FeeInvoiceFindManyArgs;
 
+export type MatronQuery = Prisma.BoardingHouseMatronsFindManyArgs;
+
 export type PaginatedQuery<T> = T & PageQuery;
 
 export type PaginatedStudentQuery = PaginatedQuery<StudentQuery>;
@@ -70,13 +68,8 @@ export type PaginatedFeeStructureQuery = PaginatedQuery<FeeStructuresQuery>;
 
 export type PaginatedFeeInvoiceQuery = PaginatedQuery<FeeInvoiceQuery>;
 
-/**
- * Generic offset-based pagination for any Prisma model delegate
- * (prisma.schools, prisma.students, prisma.staffs, etc).
- *
- * Runs findMany + count in parallel inside a single call so callers
- * never have to hand-roll skip/take/Promise.all logic per route.
- */
+export type PaginatedMatronQuery = PaginatedQuery<MatronQuery>;
+
 export async function paginate<D extends PaginatableDelegate>(
   delegate: D,
   args: Pick<FindManyArgs<D>, 'where' | 'orderBy' | 'select' | 'include'> & {

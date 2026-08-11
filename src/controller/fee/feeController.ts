@@ -162,6 +162,11 @@ export const allSingleSchoolFees = async (req: Request, res: Response, next: Nex
           student: { include: { users: { select: { firstName: true, lastName: true } } } },
         },
       },
+      school: {
+        select: {
+          schoolName: true,
+        },
+      },
     },
   } satisfies PaginatedFeeStructureQuery;
 
@@ -191,6 +196,11 @@ export const allGroupSchoolFees = async (req: Request, res: Response, next: Next
           student: { include: { users: { select: { firstName: true, lastName: true } } } },
         },
       },
+      school: {
+        select: {
+          schoolName: true,
+        },
+      },
     },
   } satisfies PaginatedFeeStructureQuery;
 
@@ -202,7 +212,6 @@ export const allGroupSchoolFees = async (req: Request, res: Response, next: Next
 export const singleSchoolFeeAnalytics = async (req: Request, res: Response, next: NextFunction) => {
   const { schoolId } = req.params;
   const feeScopeWhere = { schoolId };
-  const studentScopeWhere = { classInfo: { schoolId } };
 
   const [counts, studentsPerFeeTypeChart] = await Promise.all([
     getFeeStructureCounts(feeScopeWhere),
@@ -221,7 +230,6 @@ export const singleSchoolFeeAnalytics = async (req: Request, res: Response, next
 export const groupFeeAnalytics = async (req: Request, res: Response, next: NextFunction) => {
   const { groupId } = req.params;
   const feeScopeWhere = { school: { groupId } };
-  const studentScopeWhere = { classInfo: { school: { groupId } } };
 
   const [counts, studentsPerFeeTypeChart] = await Promise.all([
     getFeeStructureCounts(feeScopeWhere),

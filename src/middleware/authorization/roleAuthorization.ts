@@ -7,7 +7,7 @@ export const roleAuthorization = (authorizedRoles: Role[]) => {
     const userRole = req.userRole;
     const isAuthorized = userRole ? authorizedRoles.includes(userRole as Role) : false;
     if (!isAuthorized) {
-      const error = new ApiError(401, 'Unauthorised');
+      const error = new ApiError(401, 'Role unauthorised');
       return next(error);
     }
 

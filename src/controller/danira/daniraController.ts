@@ -55,7 +55,7 @@ export const approveSchool = async (
     const token = await sign({ admins: approved.data.users.admins.id }, 3600);
     const urlData = { token };
     schoolApprovedMail(approved.data, urlData);
-    res.status(200).send(new SuccessResponse(approved?.message, approved?.data.schools));
+    res.status(200).send(new SuccessResponse(approved?.message, approved?.data.school));
     return;
   }
 };

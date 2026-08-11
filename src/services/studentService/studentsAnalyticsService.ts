@@ -89,3 +89,71 @@ async function getStudentsByDepartment(
 
   return result;
 }
+
+export async function getStaffStudentAnalyticsData(
+  studentWhere: Record<string, any>,
+  schoolId: string[],
+  scopeType: 'school' | 'group',
+): Promise<[number, number, number, number, StudentsByDepartment[], StudentsByGender[]]> {
+  const fourMonthsAgo = new Date();
+  fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);
+
+  return await Promise.all([
+    prismaClient.students.count({ where: studentWhere }),
+    prismaClient.students.count({
+      where: { ...studentWhere, users: { status: 'ACTIVE' } },
+    }),
+    prismaClient.students.count({
+      where: { ...studentWhere, users: { createdAt: { gte: fourMonthsAgo } } },
+    }),
+    prismaClient.students.count({
+      where: {
+        ...studentWhere,
+        OR: [{ fees: { none: {} } }, { fees: { some: { status: { in: ['UNPAID', 'PARTIAL'] } } } }],
+      },
+    }),
+    getStaffStudentsByDepartment(studentWhere, schoolId, scopeType),
+    getStudentsByGender(studentWhere),
+  ]);
+}
+
+async function getStaffStudentsByDepartment(
+  studentWhere: Record<string, any>,
+  scopeId?: string[],
+  scopeType: 'school' | 'group' = 'school',
+): Promise<StudentsByDepartment[]> {
+  if (!scopeId || scopeId.length === 0) return [];
+  const scopeFilter: Record<string, any> =
+    scopeType === 'school'
+      ? { schoolId: { in: scopeId } }
+      : { school: { groupId: { in: scopeId } } };
+
+  const departments = await prismaClient.departments.findMany({
+    where: scopeFilter,
+    select: { id: true, name: true },
+  });
+
+  const counts = await Promise.all(
+    departments.map((department) =>
+      prismaClient.students.count({
+        where: { ...studentWhere, departmentId: department.id },
+      }),
+    ),
+  );
+
+  const unassignedCount = await prismaClient.students.count({
+    where: { ...studentWhere, ...scopeFilter, departmentId: null },
+  });
+
+  const result: StudentsByDepartment[] = departments.map((department, i) => ({
+    departmentId: department.id,
+    name: department.name,
+    studentCount: counts[i] ?? 0,
+  }));
+
+  if (unassignedCount > 0) {
+    result.push({ departmentId: 'unassigned', name: null, studentCount: unassignedCount });
+  }
+
+  return result;
+}

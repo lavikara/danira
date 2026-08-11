@@ -334,6 +334,7 @@ async function clearDatabase(): Promise<void> {
   await prismaClient.fees.deleteMany();
   await prismaClient.feeInvoice.deleteMany();
   await prismaClient.receipt.deleteMany();
+  await prismaClient.feeStructureClasses.deleteMany();
   await prismaClient.feeStructures.deleteMany();
   await prismaClient.events.deleteMany();
   await prismaClient.announcements.deleteMany();
@@ -341,6 +342,8 @@ async function clearDatabase(): Promise<void> {
   await prismaClient.classSubjects.deleteMany();
   await prismaClient.students.deleteMany();
   await prismaClient.guardians.deleteMany();
+  await prismaClient.boardingHouseMatrons.deleteMany();
+  await prismaClient.boardingHouses.deleteMany();
   await prismaClient.classes.deleteMany();
   await prismaClient.assignments.deleteMany();
   await prismaClient.exams.deleteMany();
@@ -390,11 +393,6 @@ async function main(): Promise<void> {
   );
 
   // ── 2. TERMS (20 = 2 per GradeYear) ──────────────────────────────────────
-  //   Each GradeYear now gets a completed PREVIOUS term (ENDED, last month)
-  //   and an ONGOING current term (this month → next month). This is what
-  //   lets Fees be billed — and outstanding balances tracked — per term,
-  //   e.g. a student resuming for the current term while still owing fees
-  //   from the previous one.
   console.log('📆  Seeding Terms …');
 
   const termCycle = [TermType.FIRSTTERM, TermType.SECONDTERM, TermType.THIRDTERM];
@@ -433,9 +431,7 @@ async function main(): Promise<void> {
     )
   ).flat();
 
-  /** Each GradeYear's completed term — the one fees may still be outstanding from. */
   const previousTermByGradeYearId = new Map<string, (typeof terms)[number]>();
-  /** Each GradeYear's ongoing term — the one being actively billed/timetabled. */
   const currentTermByGradeYearId = new Map<string, (typeof terms)[number]>();
   gradeYears.forEach((gradeYear, i) => {
     previousTermByGradeYearId.set(gradeYear.id, terms[i * 2]);
@@ -678,6 +674,38 @@ async function main(): Promise<void> {
     });
   });
 
+  // ── 4c. BOARDING HOUSES ───────────────────────────────────────────────────
+  //   Every school gets a Boys and a Girls boarding house. These back the
+  //   `Boarding Fee` FeeStructure above and give `Students.boardingHousesId`
+  //   somewhere real to point to for every ONCAMPUS student, and give
+  //   BoardingHouseMatrons (seeded once Staffs exist, see 9c) a house to
+  //   attach to.
+  console.log('🏠  Seeding BoardingHouses …');
+
+  const boardingHouses = (
+    await Promise.all(
+      schools.map((school) =>
+        Promise.all([
+          prismaClient.boardingHouses.create({
+            data: { name: 'Boys Hostel', schoolId: school.id },
+          }),
+          prismaClient.boardingHouses.create({
+            data: { name: 'Girls Hostel', schoolId: school.id },
+          }),
+        ]),
+      ),
+    )
+  ).flat();
+
+  const boardingHousesBySchoolId = new Map<
+    string,
+    { boys: (typeof boardingHouses)[number]; girls: (typeof boardingHouses)[number] }
+  >();
+  schools.forEach((school, i) => {
+    const [boys, girls] = boardingHouses.slice(i * 2, i * 2 + 2);
+    boardingHousesBySchoolId.set(school.id, { boys, girls });
+  });
+
   // ── 5. DEPARTMENTS (46) ──────────────────────────────────────────────────
   console.log('🏢  Seeding Departments …');
 
@@ -743,7 +771,7 @@ async function main(): Promise<void> {
       userId: superAdmin.id,
       type: SchoolSetup.DANIRA,
       schoolIds: [],
-      schools: { connect: [] },
+      school: { connect: [] },
       groupId: null,
     },
   });
@@ -771,7 +799,7 @@ async function main(): Promise<void> {
       userId: daniraAdmin.id,
       type: SchoolSetup.DANIRA,
       schoolIds: [],
-      schools: { connect: [] },
+      school: { connect: [] },
       groupId: null,
     },
   });
@@ -799,7 +827,7 @@ async function main(): Promise<void> {
       userId: guserA.id,
       type: SchoolSetup.GROUP,
       schoolIds: groupASchools.map((s) => s.id),
-      schools: { connect: groupASchools.map((s) => ({ id: s.id })) },
+      school: { connect: groupASchools.map((s) => ({ id: s.id })) },
       groupId: groupA.id,
     },
   });
@@ -827,7 +855,7 @@ async function main(): Promise<void> {
       userId: guserB.id,
       type: SchoolSetup.GROUP,
       schoolIds: groupBSchools.map((s) => s.id),
-      schools: { connect: groupBSchools.map((s) => ({ id: s.id })) },
+      school: { connect: groupBSchools.map((s) => ({ id: s.id })) },
       groupId: groupB.id,
     },
   });
@@ -872,7 +900,7 @@ async function main(): Promise<void> {
           userId: user.id,
           type: SchoolSetup.SINGLE,
           schoolIds: [school.id],
-          schools: { connect: [{ id: school.id }] },
+          school: { connect: [{ id: school.id }] },
           groupId: null,
         },
       });
@@ -883,96 +911,120 @@ async function main(): Promise<void> {
   // ── 7. SUBJECTS (104) ────────────────────────────────────────────────────
   console.log('📚  Seeding Subjects …');
 
+  // Every non-primary subject is owned by one department (for staffing) and
+  // is tagged CORE or ELECTIVE (for student enrollment). CORE subjects are
+  // taken by every student in the school regardless of their own
+  // department; ELECTIVE subjects are only taken by students who belong to
+  // that same owning department — e.g. a Sciences-department student never
+  // ends up enrolled in Literature in English (Language) or Financial
+  // Accounting (Business), and a Business-department student never ends up
+  // enrolled in Physics or Chemistry (Sciences). See the `subjects: {
+  // connect: ... }` logic in the student-creation blocks below (§16).
   const subjectTemplates = [
     {
       name: 'Mathematics',
       code: 'MTH101',
       description: 'Number theory, algebra, and geometry.',
-      category: 'Mathematics',
+      department: 'Mathematics',
+      subjectCategory: SubjectCategory.CORE,
     },
     {
       name: 'Further Mathematics',
       code: 'MTH201',
       description: 'Calculus, vectors, and advanced statistics.',
-      category: 'Mathematics',
+      department: 'Mathematics',
+      subjectCategory: SubjectCategory.ELECTIVE,
     },
     {
       name: 'English Language',
       code: 'ENG101',
       description: 'Grammar, comprehension, and composition.',
-      category: 'Language',
+      department: 'Language',
+      subjectCategory: SubjectCategory.CORE,
     },
     {
       name: 'Literature in English',
       code: 'LIT201',
       description: 'Prose, drama, and poetry analysis.',
-      category: 'Language',
+      department: 'Language',
+      subjectCategory: SubjectCategory.ELECTIVE,
     },
     {
       name: 'Basic Science',
       code: 'BSC101',
       description: 'Introductory physical and life sciences.',
-      category: 'Sciences',
+      department: 'Sciences',
+      subjectCategory: SubjectCategory.ELECTIVE,
     },
     {
       name: 'Social Studies',
       code: 'SOS101',
       description: 'Civics, history, and geography.',
-      category: 'Humanities',
+      department: 'Humanities',
+      subjectCategory: SubjectCategory.ELECTIVE,
     },
     {
       name: 'Physics',
       code: 'PHY201',
       description: 'Mechanics, waves, and electromagnetism.',
-      category: 'Sciences',
+      department: 'Sciences',
+      subjectCategory: SubjectCategory.ELECTIVE,
     },
     {
       name: 'Chemistry',
       code: 'CHM201',
       description: 'Organic and inorganic chemistry.',
-      category: 'Sciences',
+      department: 'Sciences',
+      subjectCategory: SubjectCategory.ELECTIVE,
     },
     {
       name: 'Biology',
       code: 'BIO201',
       description: 'Cell biology, genetics, and ecology.',
-      category: 'Sciences',
+      department: 'Sciences',
+      subjectCategory: SubjectCategory.ELECTIVE,
     },
     {
       name: 'Computer Studies',
       code: 'CMP101',
       description: 'Programming fundamentals and ICT literacy.',
-      category: 'Sciences',
+      department: 'Sciences',
+      subjectCategory: SubjectCategory.ELECTIVE,
     },
     {
       name: 'Economics',
       code: 'ECO201',
       description: 'Micro and macroeconomics for secondary school.',
-      category: 'Business',
+      department: 'Business',
+      subjectCategory: SubjectCategory.ELECTIVE,
     },
     {
       name: 'Financial Accounting',
       code: 'FAC201',
       description: 'Bookkeeping, ledgers, and financial statements.',
-      category: 'Business',
+      department: 'Business',
+      subjectCategory: SubjectCategory.ELECTIVE,
     },
     {
       name: 'Civic Education',
       code: 'CIV101',
       description: 'Citizenship, rights, and responsibilities.',
-      category: 'Humanities',
+      department: 'Humanities',
+      subjectCategory: SubjectCategory.CORE,
     },
     {
       name: 'Agricultural Sci.',
       code: 'AGR101',
       description: 'Crop science, livestock, and farm management.',
-      category: 'Sciences',
+      department: 'Sciences',
+      subjectCategory: SubjectCategory.ELECTIVE,
     },
     {
       name: 'Fine Arts',
       code: 'ART101',
       description: 'Drawing, painting, and art history.',
-      category: 'Humanities',
+      department: 'Humanities',
+      subjectCategory: SubjectCategory.ELECTIVE,
     },
   ] as const;
 
@@ -983,14 +1035,14 @@ async function main(): Promise<void> {
         return Promise.all(
           subjectTemplates.map((tpl) => {
             const department = departments.find(
-              (d) => d.schoolId === school.id && d.name === tpl.category,
+              (d) => d.schoolId === school.id && d.name === tpl.department,
             )!;
             return prismaClient.subjects.create({
               data: {
                 name: tpl.name,
                 code: `${tpl.code}-${shortName.slice(0, 3).toUpperCase()}`,
                 status: 'ACTIVE',
-                category: SubjectCategory.CORE,
+                category: tpl.subjectCategory,
                 description: tpl.description,
                 schoolId: school.id,
                 departmentId: department.id,
@@ -1280,6 +1332,41 @@ async function main(): Promise<void> {
 
   const allStaffs = [...staffs, ...extraStaffs];
 
+  // ── 9c. BOARDING HOUSE MATRONS ────────────────────────────────────────────
+  //   Assign one support-staff member as matron to each school's Boys
+  //   Hostel and Girls Hostel (falling back to a single matron covering
+  //   both if a school only has one eligible support staffer).
+  console.log('🛏️   Seeding BoardingHouseMatrons …');
+
+  const boardingHouseMatrons = (
+    await Promise.all(
+      schools.map((school) => {
+        const pair = boardingHousesBySchoolId.get(school.id);
+        if (!pair) return Promise.resolve([]);
+        const schoolSupportStaffs = extraStaffs.filter((s) => s.schoolId === school.id);
+        const matronForBoys = schoolSupportStaffs[0];
+        const matronForGirls = schoolSupportStaffs[1] ?? schoolSupportStaffs[0];
+
+        const creates: ReturnType<typeof prismaClient.boardingHouseMatrons.create>[] = [];
+        if (matronForBoys) {
+          creates.push(
+            prismaClient.boardingHouseMatrons.create({
+              data: { boardingHouseId: pair.boys.id, staffId: matronForBoys.id },
+            }),
+          );
+        }
+        if (matronForGirls && matronForGirls.id !== matronForBoys?.id) {
+          creates.push(
+            prismaClient.boardingHouseMatrons.create({
+              data: { boardingHouseId: pair.girls.id, staffId: matronForGirls.id },
+            }),
+          );
+        }
+        return Promise.all(creates);
+      }),
+    )
+  ).flat();
+
   // ── 10. CLASSES (20) ─────────────────────────────────────────────────────
   console.log('🏫  Seeding Classes …');
 
@@ -1302,7 +1389,9 @@ async function main(): Promise<void> {
                 type: def.type,
                 status: 'ACTIVE',
                 description: `${def.suffix} at ${school.schoolName} — current academic session.`,
-                population: 20 + j * 5,
+                // Placeholder — overwritten in §16c once every Students row
+                // exists, so this always reflects real enrollment counts.
+                population: 0,
                 supervisorId: supervisor.id,
                 gradeYearId: gradeYears[j % gradeYears.length].id,
                 departmentId: supervisor.departmentId,
@@ -1348,7 +1437,9 @@ async function main(): Promise<void> {
                 type: def.type,
                 status: 'ACTIVE',
                 description: `${def.suffix} at ${school.schoolName} — current academic session.`,
-                population: 25 + j * 5,
+                // Placeholder — overwritten in §16c once every Students row
+                // exists, so this always reflects real enrollment counts.
+                population: 0,
                 supervisorId: supervisor.id,
                 gradeYearId: gradeYears[(si + j) % gradeYears.length].id,
                 departmentId: supervisor.departmentId,
@@ -1370,6 +1461,41 @@ async function main(): Promise<void> {
   nonPrimarySchools.forEach((school, si) => {
     classesBySchoolId.set(school.id, nonPrimaryClasses.slice(si * 2, si * 2 + 2));
   });
+
+  // ── 10b. FEE STRUCTURE CLASSES (target fees to specific classes) ─────────
+  //   Compulsory fees (Tuition, Library, etc.) apply school-wide, so every
+  //   class in the school is linked. Optional fees (Boarding, Lunch, Field
+  //   Trip, etc.) are each pinned to just ONE of the school's classes —
+  //   this is the concrete demonstration of FeeStructureClasses letting a
+  //   fee target specific classes instead of a whole ClassType tier.
+  console.log('🎯  Seeding FeeStructureClasses …');
+
+  const feeStructureClasses = (
+    await Promise.all(
+      schools.map((school) => {
+        const catalog = feeStructuresBySchoolId.get(school.id);
+        const schoolClasses = classesBySchoolId.get(school.id) ?? [];
+        if (!catalog || schoolClasses.length === 0) return Promise.resolve([]);
+
+        const compulsoryLinks = catalog.compulsory.flatMap((structure) =>
+          schoolClasses.map((cls) =>
+            prismaClient.feeStructureClasses.create({
+              data: { feeStructureId: structure.id, classId: cls.id },
+            }),
+          ),
+        );
+
+        const optionalLinks = catalog.optional.map((structure, oi) => {
+          const targetClass = schoolClasses[oi % schoolClasses.length];
+          return prismaClient.feeStructureClasses.create({
+            data: { feeStructureId: structure.id, classId: targetClass.id },
+          });
+        });
+
+        return Promise.all([...compulsoryLinks, ...optionalLinks]);
+      }),
+    )
+  ).flat(2);
 
   // ── 11. EXAMS (12, spread across previous/current/next month) ───────────
   console.log('📝  Seeding Exams …');
@@ -1408,9 +1534,7 @@ async function main(): Promise<void> {
     ),
   );
 
-  /** Ended exams from last month — used to give every student "previous exam" info. */
   const previousExams = exams.filter((_, i) => examWindowPlan[i].monthOffset === -1);
-  /** Upcoming exams next month — used to give every student "upcoming exam" info. */
   const upcomingExams = exams.filter((_, i) => examWindowPlan[i].monthOffset === 1);
 
   // ── 12. TESTS (12, spread across previous/current/next month) ───────────
@@ -1797,19 +1921,24 @@ async function main(): Promise<void> {
                 ratings: rating(600 + globalIndex),
               },
             });
-            // Cycle departmentId across the WHOLE school's department list
-            // (not just the supervising teacher's own department) so every
-            // department at every non-primary school ends up with at least
-            // one student, rather than only the department its two classes'
-            // supervisors happen to belong to.
             const department = schoolDepartments[globalIndex % schoolDepartments.length];
+            const isOnCampus = globalIndex % 3 === 0;
+            const boardingPair = boardingHousesBySchoolId.get(school.id);
+            // A student takes every CORE subject in the school (Mathematics,
+            // English Language, Civic Education) plus only the ELECTIVE
+            // subjects owned by their own department — so a Sciences student
+            // is never enrolled in Literature in English or Financial
+            // Accounting, and a Business student is never enrolled in
+            // Physics or Chemistry.
+            const enrolledSubjects = schoolSubjects.filter(
+              (s) => s.category === SubjectCategory.CORE || s.departmentId === department.id,
+            );
             const student = await prismaClient.students.create({
               data: {
                 userId: user.id,
                 position: nextStudentPosition(),
                 studentId: `STU-${String(globalIndex + 1).padStart(4, '0')}`,
-                accomodation:
-                  globalIndex % 3 === 0 ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
+                accomodation: isOnCampus ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
                 classId: cls.id,
                 guardianId: guardians[globalIndex % guardians.length].id,
                 schoolId: school.id,
@@ -1818,10 +1947,15 @@ async function main(): Promise<void> {
                 testId: tests[globalIndex % tests.length].id,
                 assignmentId: assignments[globalIndex % assignments.length].id,
                 departmentId: department.id,
-                subjects: { connect: schoolSubjects.map((s) => ({ id: s.id })) },
+                subjects: { connect: enrolledSubjects.map((s) => ({ id: s.id })) },
+                boardingHousesId: isOnCampus
+                  ? gender === Gender.MALE
+                    ? boardingPair?.boys.id
+                    : boardingPair?.girls.id
+                  : undefined,
               },
             });
-            studentSubjectsMap.set(student.id, schoolSubjects);
+            studentSubjectsMap.set(student.id, enrolledSubjects);
             return student;
           }),
         );
@@ -1855,12 +1989,14 @@ async function main(): Promise<void> {
           ratings: rating(650 + classIdx),
         },
       });
+      const isOnCampus = classIdx % 2 === 0;
+      const boardingPair = boardingHousesBySchoolId.get(school.id);
       const student = await prismaClient.students.create({
         data: {
           userId: user.id,
           position: nextStudentPosition(),
           studentId: `STU-P-${String(classIdx + 1).padStart(3, '0')}`,
-          accomodation: classIdx % 2 === 0 ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
+          accomodation: isOnCampus ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
           classId: cls.id,
           guardianId: guardians[classIdx % guardians.length].id,
           schoolId: school.id,
@@ -1870,6 +2006,11 @@ async function main(): Promise<void> {
           assignmentId: assignments[classIdx % assignments.length].id,
           departmentId: cls.departmentId,
           subjects: { connect: schoolSubjects.map((s) => ({ id: s.id })) },
+          boardingHousesId: isOnCampus
+            ? gender === Gender.MALE
+              ? boardingPair?.boys.id
+              : boardingPair?.girls.id
+            : undefined,
         },
       });
       studentSubjectsMap.set(student.id, schoolSubjects);
@@ -1878,12 +2019,6 @@ async function main(): Promise<void> {
   );
 
   // ── 16b. EXTRA STUDENTS (10 per school = 100) ────────────────────────────
-  //   Every school's extra students are also cycled across ALL of that
-  //   school's departments (not just tied to the class supervisor's own
-  //   department), so combined with the nonPrimaryStudents fix above, every
-  //   department — primary and non-primary — is guaranteed at least one
-  //   student even where a school's classes alone wouldn't reach every
-  //   department.
   console.log('🎒  Seeding extra Students …');
 
   const EXTRA_STUDENTS_PER_SCHOOL = 10;
@@ -1922,13 +2057,19 @@ async function main(): Promise<void> {
                 ratings: rating(globalIndex),
               },
             });
+            const isOnCampus = globalIndex % 3 === 0;
+            const boardingPair = boardingHousesBySchoolId.get(school.id);
+            // Same CORE + own-department-ELECTIVE enrollment rule as the
+            // regular non-primary students above.
+            const enrolledSubjects = schoolSubjects.filter(
+              (s) => s.category === SubjectCategory.CORE || s.departmentId === department.id,
+            );
             const student = await prismaClient.students.create({
               data: {
                 userId: user.id,
                 position: nextStudentPosition(),
                 studentId: `STU-X-${String(globalIndex + 1).padStart(4, '0')}`,
-                accomodation:
-                  globalIndex % 3 === 0 ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
+                accomodation: isOnCampus ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
                 classId: cls.id,
                 guardianId: guardians[globalIndex % guardians.length].id,
                 schoolId: school.id,
@@ -1937,10 +2078,15 @@ async function main(): Promise<void> {
                 testId: tests[globalIndex % tests.length].id,
                 assignmentId: assignments[globalIndex % assignments.length].id,
                 departmentId: department.id,
-                subjects: { connect: schoolSubjects.map((s) => ({ id: s.id })) },
+                subjects: { connect: enrolledSubjects.map((s) => ({ id: s.id })) },
+                boardingHousesId: isOnCampus
+                  ? gender === Gender.MALE
+                    ? boardingPair?.boys.id
+                    : boardingPair?.girls.id
+                  : undefined,
               },
             });
-            studentSubjectsMap.set(student.id, schoolSubjects);
+            studentSubjectsMap.set(student.id, enrolledSubjects);
             return student;
           }),
         );
@@ -1979,13 +2125,14 @@ async function main(): Promise<void> {
                 ratings: rating(globalIndex),
               },
             });
+            const isOnCampus = globalIndex % 2 === 0;
+            const boardingPair = boardingHousesBySchoolId.get(school.id);
             const student = await prismaClient.students.create({
               data: {
                 userId: user.id,
                 position: nextStudentPosition(),
                 studentId: `STU-XP-${String(globalIndex + 1).padStart(4, '0')}`,
-                accomodation:
-                  globalIndex % 2 === 0 ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
+                accomodation: isOnCampus ? Accomodation.ONCAMPUS : Accomodation.OFFCAMPUS,
                 classId: cls.id,
                 guardianId: guardians[globalIndex % guardians.length].id,
                 schoolId: school.id,
@@ -1995,6 +2142,11 @@ async function main(): Promise<void> {
                 assignmentId: assignments[globalIndex % assignments.length].id,
                 departmentId: department.id,
                 subjects: { connect: schoolSubjects.map((s) => ({ id: s.id })) },
+                boardingHousesId: isOnCampus
+                  ? gender === Gender.MALE
+                    ? boardingPair?.boys.id
+                    : boardingPair?.girls.id
+                  : undefined,
               },
             });
             studentSubjectsMap.set(student.id, schoolSubjects);
@@ -2008,6 +2160,32 @@ async function main(): Promise<void> {
   const extraStudents = [...extraNonPrimaryStudents, ...extraPrimaryStudents];
 
   const students = [...nonPrimaryStudents, ...primaryStudents, ...extraStudents];
+
+  // ── 16c. SYNC CLASS POPULATION ───────────────────────────────────────────
+  //   Classes.population was seeded as a placeholder (0) back in §10 because
+  //   students are created across three separate cohorts (regular, primary,
+  //   extra) afterward. Now that every Students row exists, count actual
+  //   enrollment per classId and write the real number back onto each
+  //   Classes row — this is the only source of truth for `population`
+  //   going forward; nothing else should hardcode it.
+  console.log('🔢  Syncing Classes.population to actual enrollment …');
+
+  const studentCountByClassId = new Map<string, number>();
+  students.forEach((student) => {
+    studentCountByClassId.set(
+      student.classId,
+      (studentCountByClassId.get(student.classId) ?? 0) + 1,
+    );
+  });
+
+  await Promise.all(
+    classes.map((cls) =>
+      prismaClient.classes.update({
+        where: { id: cls.id },
+        data: { population: studentCountByClassId.get(cls.id) ?? 0 },
+      }),
+    ),
+  );
 
   // ── 17. ATTENDANCE ───────────────────────────────────────────────────────
   console.log('✅  Seeding StudentAttendance …');
@@ -2027,8 +2205,6 @@ async function main(): Promise<void> {
     lessonsByClassIdForAttendance.set(lesson.classId, list);
   });
 
-  // Cache of every occurrence of each weekday within the 3-month window, so
-  // we don't re-walk the calendar once per lesson.
   const weekdayOccurrencesInWindow = new Map<Day, Date[]>();
   function occurrencesFor(day: Day): Date[] {
     let occurrences = weekdayOccurrencesInWindow.get(day);
@@ -2043,9 +2219,6 @@ async function main(): Promise<void> {
   lessonsByClassIdForAttendance.forEach((classLessons) => {
     classLessons.forEach((lesson, li) => {
       const occurrences = occurrencesFor(lesson.day);
-      // Cycle through every occurrence of this lesson's weekday across the
-      // previous/current/next month window, rather than only the most
-      // recent one, so attendance history spans the full 3-month timeline.
       lessonAttendanceDate.set(lesson.id, occurrences[li % occurrences.length]);
     });
   });
@@ -2071,7 +2244,21 @@ async function main(): Promise<void> {
       const rankInSchool = schoolStudents.findIndex((s) => s.id === student.id);
       const presentRate = presentRateFor(rankInSchool, schoolStudents.length);
 
-      const classLessons = lessonsByClassIdForAttendance.get(student.classId) ?? [];
+      const allClassLessons = lessonsByClassIdForAttendance.get(student.classId) ?? [];
+      // A student only actually sits in lessons for subjects they're
+      // enrolled in (Students.subjects, populated via studentSubjectsMap
+      // when the student was created). CORE subjects apply to every
+      // student in the class, but ELECTIVE lessons scheduled for that same
+      // class may belong to a different department's students — those
+      // must be excluded here, otherwise attendance (and anything derived
+      // from it, e.g. "students taught by this teacher") would include
+      // students who were never actually enrolled in that subject.
+      const enrolledSubjectIds = new Set(
+        (studentSubjectsMap.get(student.id) ?? []).map((s) => s.id),
+      );
+      const classLessons = allClassLessons.filter((lesson) =>
+        enrolledSubjectIds.has(lesson.subjectId),
+      );
       const absentTarget = Math.round(classLessons.length * (1 - presentRate));
 
       return classLessons.map((lesson, li) => {
@@ -2106,9 +2293,6 @@ async function main(): Promise<void> {
   // ── 17b. STAFF ATTENDANCE (daily school clock-in/out) ────────────────────
   console.log('🕗  Seeding StaffAttendance …');
 
-  // Evenly sample school days across the full previous/current/next month
-  // window (rather than just the last 10 days) so every staff member's
-  // attendance history spans the whole 3-month timeline.
   const STAFF_ATTENDANCE_DAYS = 18;
   const staffAttendanceStride = Math.max(
     1,
@@ -2192,10 +2376,7 @@ async function main(): Promise<void> {
     }),
   );
 
-  // ── 18. REPORT CARDS (2 per student: previous term COMPLETED + current  ──
-  //   term INCOMPLETE) — combined with each student's examId (an upcoming
-  //   exam) this gives every student previous-exam, upcoming-exam, and
-  //   report-card information.
+  // ── 18. REPORT CARDS (2 per student) ──────────────────────────────────────
   console.log('📊  Seeding ReportCards …');
 
   const examById = new Map(exams.map((e) => [e.id, e]));
@@ -2247,21 +2428,6 @@ async function main(): Promise<void> {
   ).flat();
 
   // ── 19. FEE INVOICES + FEES + RECEIPTS (billed per term) ─────────────────
-  //   Every student gets ONE FeeInvoice PER TERM — a completed invoice for
-  //   the previous, now-ENDED term (which may still be owing) and a fresh
-  //   invoice for the ONGOING current term. Every individual charge for
-  //   that term (Tuition, Library, Boarding, Field Trip, etc.) is created
-  //   as a `Fees` line item attached to its invoice via `invoiceId`.
-  //   `invoice.fees` is therefore the "array of fees a student is paying"
-  //   for that specific term, with a rolled-up total/paid/outstanding on
-  //   the invoice itself. Whatever was left PARTIAL/UNPAID on the previous
-  //   term's invoice simply stays that way — nothing "clears" it — so a
-  //   student resuming for the current term still shows a separate,
-  //   still-outstanding invoice from last term, and the total amount they
-  //   owe across terms is just `sum(invoice.totalOutstanding)` over all
-  //   their FeeInvoice rows. `@@unique([studentId, termId])` on FeeInvoice
-  //   guarantees a student can never end up with two invoices for the same
-  //   term.
   console.log('💰  Seeding FeeInvoices + Fees + Receipts …');
 
   const bursarBySchoolId = new Map<string, (typeof extraStaffs)[number]>();
@@ -2275,20 +2441,11 @@ async function main(): Promise<void> {
     return cycle[seed % cycle.length];
   }
 
-  /** Current-term bills skew toward UNPAID/PARTIAL — the term has only just started. */
   function currentTermFeeStatus(seed: number): 'PAID' | 'PARTIAL' | 'UNPAID' {
     const cycle = ['UNPAID', 'UNPAID', 'PARTIAL', 'UNPAID', 'PARTIAL', 'PAID'] as const;
     return cycle[seed % cycle.length];
   }
 
-  /**
-   * Decides whether a given OPTIONAL FeeStructure genuinely applies to this
-   * student, instead of every student getting one optional fee at random.
-   * Boarding only makes sense for a student actually living on campus;
-   * the school bus only makes sense for one commuting from off campus.
-   * Lunch / Extracurricular / Field Trip are true opt-ins, so a
-   * deterministic (but varied) subset of students sign up for each.
-   */
   function isOptionalFeeApplicable(
     structureName: string,
     student: { accomodation: Accomodation | null },
@@ -2298,20 +2455,18 @@ async function main(): Promise<void> {
       case 'Boarding Fee':
         return student.accomodation === Accomodation.ONCAMPUS;
       case 'Transportation Fee (School Bus)':
-        // Most off-campus students take the bus; a few make their own way.
         return student.accomodation === Accomodation.OFFCAMPUS && seed % 3 !== 0;
       case 'Lunch Fee':
-        return seed % 5 !== 4; // ~80% opt in
+        return seed % 5 !== 4;
       case 'Extracurricular Activities Fee':
-        return seed % 2 === 0; // ~50% opt in
+        return seed % 2 === 0;
       case 'Field Trip Fee':
-        return seed % 10 !== 9; // ~90% opt in (school-wide trip)
+        return seed % 10 !== 9;
       default:
         return true;
     }
   }
 
-  /** One planned fee-item charge, computed before anything is written to the DB. */
   type PlannedFeeItem = {
     structure: (typeof feeStructures)[number];
     category: 'COMPULSORY' | 'OPTIONAL';
@@ -2326,10 +2481,6 @@ async function main(): Promise<void> {
   let feeInvoicesCreated = 0;
   let studentsCarryingPreviousBalance = 0;
 
-  /** Guards the "one FeeInvoice per student per term" invariant at seed time,
-   *  so a coding mistake fails fast with a readable message here instead of
-   *  a cryptic Postgres unique-constraint error from `@@unique([studentId,
-   *  termId])` three layers down. */
   const billedInvoiceKeys = new Set<string>();
   function claimInvoiceSlot(studentId: string, termId: string): void {
     const key = `${studentId}:${termId}`;
@@ -2341,8 +2492,6 @@ async function main(): Promise<void> {
     billedInvoiceKeys.add(key);
   }
 
-  /** One student's previous + current term invoices, kept around purely so we
-   *  can print a real fee breakdown after seeding (see 19a below). */
   const invoicesByStudentId = new Map<
     string,
     {
@@ -2404,15 +2553,6 @@ async function main(): Promise<void> {
           return receipt.id;
         };
 
-        /**
-         * Bills every structure in `catalog` for a SINGLE term: first plans
-         * every applicable line item's amount/paid/outstanding (so the
-         * invoice-level totals are known up front), creates ONE FeeInvoice
-         * for this student + this term with those totals, then creates
-         * each `Fees` row attached to that invoice (each optionally
-         * spawning its own Receipt when something was paid on it). Returns
-         * the created invoice plus its fee items.
-         */
         const billTerm = async (
           termLabel: 'previous' | 'current',
           termId: string,
@@ -2513,10 +2653,6 @@ async function main(): Promise<void> {
           return { invoice, feeItems };
         };
 
-        // Every 4th student fully cleared their previous term's fees; everyone
-        // else has a realistic PAID/PARTIAL/UNPAID mix — and PARTIAL/UNPAID
-        // there means a genuine carried-over balance on a still-outstanding
-        // PREVIOUS-term invoice, distinct from the current term's own invoice.
         const isFullyPaidStudent = i % 4 === 0;
         const previousResult = await billTerm(
           'previous',
@@ -2543,10 +2679,6 @@ async function main(): Promise<void> {
   ).flat();
 
   // ── 19a. SAMPLE FEE BREAKDOWN (verification output) ──────────────────────
-  //   Prints one student's full itemized bill for each term's invoice
-  //   separately (Tuition, Library, Boarding, Field Trip, etc.) — so you
-  //   can see exactly what each `FeeInvoice.fees` array looks like for a
-  //   real student instead of just trusting the schema.
   console.log('🧾  Sample fee breakdown …');
 
   function formatNaira(amount: number): string {
@@ -2583,8 +2715,6 @@ async function main(): Promise<void> {
     );
   }
 
-  // Pick a student who is actually carrying a balance from last term, so the
-  // example shows a previous-term invoice with a real outstanding amount.
   const sampleStudent =
     students.find((s) => {
       const entry = invoicesByStudentId.get(s.id);
@@ -2611,8 +2741,6 @@ async function main(): Promise<void> {
   const timetables = await Promise.all(
     classes.map(async (cls, i) => {
       const classLessons = lessonsByClassId.get(cls.id) ?? [];
-      // A timetable represents the actively-running schedule, so it's
-      // anchored to the ongoing current term, not the completed previous one.
       const term =
         (cls.gradeYearId ? currentTermByGradeYearId.get(cls.gradeYearId) : undefined) ??
         terms[i % terms.length];
@@ -2726,18 +2854,9 @@ async function main(): Promise<void> {
     ),
   );
 
-  // ── 22. NOTIFICATIONS (every user gets ≥2, spread across the 3-month  ────
-  //   window: previous month, current month, next month) ───────────────────
+  // ── 22. NOTIFICATIONS ──────────────────────────────────────────────────────
   console.log('🔔  Seeding Notifications …');
 
-  // Icon and colour are now enum-typed on the Notifications model
-  // (NotificationIcon / NotificationColor) rather than raw strings — the
-  // app layer resolves NotificationIcon → "bi-…" class and NotificationColor
-  // → "var(--color-X-bg)"/"var(--color-X-text)" (see the enum doc comments
-  // in schema.prisma). bgColor and iconColor always share the same colour
-  // family for a given notification, so `color` below drives both. Each
-  // NotificationType and each NotificationEntityType gets its own unique
-  // icon + colour pair — none are reused within the same enum.
   type NotificationIconName =
     | 'MEGAPHONE_FILL'
     | 'CASH_COIN'
@@ -2800,11 +2919,6 @@ async function main(): Promise<void> {
     REPORT_CARD: chip('GREEN', 'FILE_EARMARK_BAR_GRAPH_FILL'),
   };
 
-  /**
-   * A notification's icon/colour is driven by its `entityType` when one is
-   * set (it's the more specific signal — "this is about a Fee"), falling
-   * back to its `type` otherwise (e.g. ATTENDANCE_ALERT has no entityType).
-   */
   function styleForNotification(
     type: keyof typeof NOTIFICATION_TYPE_STYLE,
     entityType?: keyof typeof NOTIFICATION_ENTITY_TYPE_STYLE | null,
@@ -2938,7 +3052,6 @@ async function main(): Promise<void> {
 
   let notificationRecipientsCreated = 0;
 
-  /** Assigns 2 distinct notifications from `pool` to `userId` as NotificationRecipients. */
   async function giveNotifications(
     userId: string,
     pool: typeof globalNotifications,
@@ -2950,7 +3063,7 @@ async function main(): Promise<void> {
     const uniquePicks = Array.from(new Map(picks.map((n) => [n.id, n])).values());
     await Promise.all(
       uniquePicks.map(async (notification, idx) => {
-        const isRead = (seed + idx) % 3 !== 0; // roughly two-thirds read
+        const isRead = (seed + idx) % 3 !== 0;
         await prismaClient.notificationRecipients.create({
           data: {
             notificationId: notification.id,
@@ -2966,11 +3079,9 @@ async function main(): Promise<void> {
 
   console.log('🔔  Assigning Notifications to every user …');
 
-  // Super/Danira admins — system-wide (global) notifications.
   await giveNotifications(superAdmin.id, globalNotifications, 0);
   await giveNotifications(daniraAdmin.id, globalNotifications, 1);
 
-  // Group admins — notifications from the first school in their group.
   const groupANotifications =
     notificationsBySchoolId.get(groupASchools[0]?.id ?? '') ?? globalNotifications;
   const groupBNotifications =
@@ -2978,7 +3089,6 @@ async function main(): Promise<void> {
   await giveNotifications(guserA.id, groupANotifications, 2);
   await giveNotifications(guserB.id, groupBNotifications, 3);
 
-  // School admins — their own school's notifications.
   await Promise.all(
     schoolAdmins.map((sa, i) =>
       giveNotifications(
@@ -2989,7 +3099,6 @@ async function main(): Promise<void> {
     ),
   );
 
-  // Staff (teachers, primary-dept staff, extra support staff) — their own school's notifications.
   await Promise.all(
     allStaffs.map((staff, i) =>
       giveNotifications(
@@ -3000,7 +3109,6 @@ async function main(): Promise<void> {
     ),
   );
 
-  // Students — their own school's notifications.
   await Promise.all(
     students.map((student, i) =>
       giveNotifications(
@@ -3011,7 +3119,6 @@ async function main(): Promise<void> {
     ),
   );
 
-  // Guardians — notifications from their first ward's school.
   const schoolIdByGuardianId = new Map<string, string>();
   students.forEach((student) => {
     if (student.schoolId && !schoolIdByGuardianId.has(student.guardianId)) {
@@ -3029,12 +3136,7 @@ async function main(): Promise<void> {
   const totalNotifications =
     globalNotifications.length + schools.length * schoolNotificationDefs.length;
   const totalNotifiedUsers =
-    2 + // super + danira admin
-    2 + // group admins
-    schoolAdmins.length +
-    allStaffs.length +
-    students.length +
-    guardians.length;
+    2 + 2 + schoolAdmins.length + allStaffs.length + students.length + guardians.length;
 
   // ── Summary ───────────────────────────────────────────────────────────────
   console.log(`
@@ -3047,10 +3149,13 @@ async function main(): Promise<void> {
   Departments             ${departments.length}  (4/primary school, 5/secondary+tertiary school; every one has a head AND at least one student)
   Admins                  14
   Staffs                  ${allStaffs.length}  (${teacherStaffs.length} subject teachers (incl. primary) + ${primaryStaffs.length} primary-dept caregivers + ${extraStaffs.length} extra support staff (10/school); each has a staffId, ACTIVE/LEAVE status, and is assigned at least one lesson — most teachers now teach 2 subjects across multiple lessons)
-  Classes                 ${classes.length}  (2 per school, every school has its own)
+  Classes                 ${classes.length}  (2 per school, every school has its own; population synced to each class's actual Students count)
   Subjects                ${subjects.length}  (${nonPrimarySubjects.length} academic (${subjectTemplates.length}/school, every department has ≥2), ${primarySubjects.length} early-years — every school has its own curriculum + teacher, each Subjects row carries its own schoolId)
   ClassSubjects           ${classSubjects.length}  (one per distinct class↔subject offering, tagged with the teaching staff)
   FeeStructures           ${feeStructures.length}  (${compulsoryFeeTemplates.length} compulsory + ${optionalFeeTemplates.length} optional per school, amount scaled by SchoolType)
+  FeeStructureClasses     ${feeStructureClasses.length}  (compulsory fees linked to every class in their school; optional fees pinned to one specific class each — the many-to-many that lets a fee target specific classes rather than a whole ClassType tier)
+  BoardingHouses          ${boardingHouses.length}  (Boys + Girls hostel per school)
+  BoardingHouseMatrons    ${boardingHouseMatrons.length}  (1 support staff assigned per boarding house)
   GradeYears              ${gradeYears.length}
   Terms                   ${terms.length}  (2 per GradeYear: a completed PREVIOUS term + the ONGOING current term)
   Exams                   ${exams.length}
@@ -3058,8 +3163,8 @@ async function main(): Promise<void> {
   Assignments             ${assignments.length}
   Lessons                 ${lessons.length}  (${nonPrimaryLessons.length + primaryLessons.length} timetable + ${secondSubjectLessons.length} second-subject + ${supportLessons.length} support-staff lessons — every one of the ${allStaffs.length} staff teaches at least one lesson, most teach several)
   Guardians               ${guardians.length}
-  Students                ${students.length}  (${nonPrimaryStudents.length} in subject classes + ${primaryStudents.length} in primary classes + ${extraStudents.length} extra students (10/school); each has a studentId + ACTIVE/SUSPENDED status; non-primary/extra students are cycled across ALL their school's departments so every department has ≥1 student)
-  StudentAttendance       ${studentAttendanceRecords.length}  (every student × every lesson in their own class, spread across last/this/next month; in every school ≥10% of students sit below 60% attendance and ≥5% below 50%)
+  Students                ${students.length}  (${nonPrimaryStudents.length} in subject classes + ${primaryStudents.length} in primary classes + ${extraStudents.length} extra students (10/school); each has a studentId + ACTIVE/SUSPENDED status; non-primary/extra students are cycled across ALL their school's departments so every department has ≥1 student; every ONCAMPUS student is linked to their school's boarding house matching their gender)
+  StudentAttendance       ${studentAttendanceRecords.length}  (every student × every lesson for a subject they're actually enrolled in — Students.subjects — spread across last/this/next month; in every school ≥10% of students sit below 60% attendance and ≥5% below 50%)
   StaffAttendance         ${staffAttendanceRecords.length}  (every staff member × ${STAFF_ATTENDANCE_DAYS} school days evenly sampled across last/this/next month)
   LessonAttendance        ${lessonAttendanceRecords.length}  (one per Lesson, clocked by the staff member assigned to teach it, dated with that lesson's attendance date)
   ReportCards             ${reportCards.length}  (2 per student — a COMPLETED report card for last term's exam + an INCOMPLETE report card for this term, in progress toward the upcoming exam)

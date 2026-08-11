@@ -91,7 +91,7 @@ const signupSchool = async (
     const schoolAdminData: SchoolAdminData = {
       userId: user.id,
       schoolIds: [(school as any).id],
-      schools: { connect: { id: (school as any).id } },
+      school: { connect: { id: (school as any).id } },
       type: (school as any).setup,
     };
     const admin = await createWithTransaction(tx as any, 'admins', schoolAdminData);
@@ -102,7 +102,7 @@ const signupSchool = async (
             where: { id: (group as any).id },
             data: {
               admins: { connect: { id: (admin as any).id } },
-              schools: { connect: { id: (school as any).id } },
+              school: { connect: { id: (school as any).id } },
               status: userRole === 'SUPERADMIN' ? 'APPROVED' : 'PENDING',
             },
           }

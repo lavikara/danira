@@ -2,6 +2,7 @@ import { type Request, type Response, type NextFunction } from 'express';
 import { getClassAnalyticsData } from '../../services/classService/classAnalyticsService.js';
 import { ChartJsData } from '../../types/definitions.js';
 import { toChartData } from '../../utils/analytics.js';
+import { FeeStructures } from '../../generated/browser.js';
 import { createSortWhitelist } from '../../middleware/pagination/pagination.js';
 import { paginatedResource } from '../../services/dbServices/dbServices.js';
 import { PaginatedClassQuery } from '../../services/paginationService/paginate.js';
@@ -12,6 +13,20 @@ const resolveSort = createSortWhitelist(CLASSES_SORTABLE_FIELDS, 'name', {
   name: (order) => ({ name: order }),
   population: (order) => ({ population: order }),
 });
+
+interface ClassFee {
+  id: string;
+  feeStructureId: string;
+  classId: string;
+  createdAt: string;
+  feeStructure: FeeStructures;
+}
+
+const calculateCompulsoryFees = (structures: ClassFee[]): number => {
+  return structures
+    .filter((fee) => fee.feeStructure.category === 'COMPULSORY')
+    .reduce((total, fee) => total + fee.feeStructure.amount, 0);
+};
 
 export const allSingleSchoolClass = async (req: Request, res: Response, next: NextFunction) => {
   const { schoolId } = req.params;
@@ -53,15 +68,7 @@ export const allSingleSchoolClass = async (req: Request, res: Response, next: Ne
       },
       subjectOfferings: { select: { subject: true } },
       department: { select: { name: true } },
-      students: {
-        take: 1,
-        select: {
-          fees: {
-            where: { category: 'COMPULSORY' },
-            select: { amount: true, currency: true },
-          },
-        },
-      },
+      feeStructures: { include: { feeStructure: true } },
     },
   } satisfies PaginatedClassQuery;
 
@@ -69,19 +76,14 @@ export const allSingleSchoolClass = async (req: Request, res: Response, next: Ne
   if (!result.success) {
     throw new Error('Unable to fetch classes');
   }
-
-  const data = result.data.map(({ students, subjectOfferings, ...classItem }) => {
-    const compulsoryFees = students[0]?.fees ?? [];
+  const data = result.data.map(({ feeStructures, subjectOfferings, ...classItem }) => {
     return {
       ...classItem,
       subjectOfferings,
       subjectCount: subjectOfferings.length,
       compulsoryFeesAmount: {
-        amount: compulsoryFees.reduce(
-          (sum: number, fee: { amount: number }) => sum + fee.amount,
-          0,
-        ),
-        currency: compulsoryFees[0]?.currency ?? null,
+        amount: calculateCompulsoryFees(feeStructures),
+        currency: feeStructures[0]?.feeStructure.currency ?? null,
       },
     };
   });
@@ -179,15 +181,7 @@ export const allGroupSchoolClass = async (req: Request, res: Response, next: Nex
       },
       subjectOfferings: { select: { subject: true } },
       department: { select: { name: true } },
-      students: {
-        take: 1,
-        select: {
-          fees: {
-            where: { category: 'COMPULSORY' },
-            select: { amount: true, currency: true },
-          },
-        },
-      },
+      feeStructures: { include: { feeStructure: true } },
     },
   } satisfies PaginatedClassQuery;
 
@@ -197,18 +191,14 @@ export const allGroupSchoolClass = async (req: Request, res: Response, next: Nex
     throw new Error('Unable to fetch classes');
   }
 
-  const data = result.data.map(({ students, subjectOfferings, ...classItem }) => {
-    const compulsoryFees = students[0]?.fees ?? [];
+  const data = result.data.map(({ feeStructures, subjectOfferings, ...classItem }) => {
     return {
       ...classItem,
       subjectOfferings,
       subjectCount: subjectOfferings.length,
       compulsoryFeesAmount: {
-        amount: compulsoryFees.reduce(
-          (sum: number, fee: { amount: number }) => sum + fee.amount,
-          0,
-        ),
-        currency: compulsoryFees[0]?.currency ?? null,
+        amount: calculateCompulsoryFees(feeStructures),
+        currency: feeStructures[0]?.feeStructure.currency ?? null,
       },
     };
   });
