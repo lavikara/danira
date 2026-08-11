@@ -3,6 +3,7 @@ import { paginate } from '../paginationService/paginate.js';
 import {
   RelationKeys,
   IncludeQuery,
+  SelectQuery,
   OmitQuery,
   payloadType,
   AdminToUser,
@@ -23,6 +24,7 @@ import {
   PaginatedStaffAttendanceQuery,
   PaginatedFeeInvoiceQuery,
   PaginatedFeeStructureQuery,
+  PaginatedMatronQuery,
   PaginatedNotificationQuery,
 } from '../paginationService/paginate.js';
 
@@ -38,6 +40,7 @@ export const paginatedResource = async (
     | PaginatedFeeStructureQuery
     | PaginatedNotificationQuery
     | PaginatedFeeInvoiceQuery
+    | PaginatedMatronQuery
     | PaginatedSubjectQuery,
   message: string,
 ) => {
@@ -97,9 +100,22 @@ export const findFirst = async (query: FindFirst) => {
 };
 
 export const findMany = async (query: FindMany) => {
+  if (query.select) {
+    return await prismaClient[query.table].findMany({
+      where: query.where,
+      select: query.select as SelectQuery,
+    });
+  }
+
+  if (query.include) {
+    return await prismaClient[query.table].findMany({
+      where: query.where,
+      include: query.include as IncludeQuery,
+    });
+  }
+
   return await prismaClient[query.table].findMany({
-    where: { [query.where]: { in: query.whereArray } },
-    include: query.include as IncludeQuery,
+    where: query.where,
   });
 };
 
