@@ -21,6 +21,7 @@ import studentRouter from './routes/student/studentRouter.js';
 import timetableRouter from './routes/timetable/timetableRouter.js';
 import attendanceRouter from './routes/attendance/attendanceRouter.js';
 import notificationRouter from './routes/notification/notificationRouter.js';
+import assessmentRouter from './routes/assessment/assessmentRouter.js';
 import paymentRouter from './routes/payment/paymentRouter.js';
 
 app.use(express.json());
@@ -46,6 +47,8 @@ app.use('/subject', subjectRouter);
 app.use('/class', classRouter);
 
 app.use('/staff', staffRouter);
+
+app.use('/assessment', assessmentRouter);
 
 app.use('/timetable', timetableRouter);
 
