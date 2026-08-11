@@ -131,7 +131,7 @@ table {border-collapse: collapse;}
                     Hi ${data.users?.firstName},
                   </p>
                   <p style="margin:0 0 16px 0; font-size:15px; line-height:24px; color:#475569;" class="dark-text-secondary">
-                    We&rsquo;re excited to let you know that <strong style="color:#0f172a;" class="dark-text-primary">${data.schools.schoolName}</strong> has been approved on <strong style="color:#0f172a;" class="dark-text-primary">EduAdmin&nbsp;Pro</strong>. Your account is ready, the only thing left to do is set your password, that's if you haven't done that already.
+                    We&rsquo;re excited to let you know that <strong style="color:#0f172a;" class="dark-text-primary">${data.school.schoolName}</strong> has been approved on <strong style="color:#0f172a;" class="dark-text-primary">EduAdmin&nbsp;Pro</strong>. Your account is ready, the only thing left to do is set your password, that's if you haven't done that already.
                   </p>
                   <p style="margin:0 0 24px 0; font-size:15px; line-height:24px; color:#475569;" class="dark-text-secondary">
                     Click the button below to create your password and access your dashboard. This link is valid for <strong style="color:#0f172a;" class="dark-text-primary">24 hours</strong> if it expires, you can click the <strong>forgot password</strong> link on the login page.
@@ -153,7 +153,7 @@ table {border-collapse: collapse;}
                           </tr>
                           <tr>
                             <td style="padding-bottom:16px; font-size:15px; font-weight:600; color:#0f172a;" class="dark-text-primary">
-                              ${data.schools.schoolName}
+                              ${data.school.schoolName}
                             </td>
                           </tr>
                           <tr>
@@ -163,7 +163,7 @@ table {border-collapse: collapse;}
                           </tr>
                           <tr>
                             <td style="padding-bottom:16px; font-size:15px; font-weight:600; color:#0f172a;" class="dark-text-primary">
-                              ${data.schools.email}
+                              ${data.school.email}
                             </td>
                           </tr>
                           <tr>

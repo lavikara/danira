@@ -12,7 +12,7 @@ export const approveSchoolService = async (
     const error = { success: false, message: 'School unavailable.' };
     return error;
   }
-  const schoolEmail = findSchool.schools?.email;
+  const schoolEmail = findSchool.school?.email;
   if (!schoolEmail) {
     const error = { success: false, message: 'School admin email unavailable.' };
     return error;
@@ -28,7 +28,7 @@ export const approveSchoolService = async (
     ? await findUniqueSchool('schoolGroups', 'id', data.groupId)
     : null;
 
-  if (findSchool.schools.setup === 'GROUP' && !findSchoolGroup) {
+  if (findSchool.school.setup === 'GROUP' && !findSchoolGroup) {
     const error = { success: false, message: 'Group unavailable.' };
     return error;
   }
