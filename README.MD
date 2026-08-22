@@ -1,3 +1,5 @@
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/lavikara/danira/badge)](https://scorecard.dev/viewer/?uri=github.com/lavikara/danira)
+
 # Danira
 
 A TypeScript-based school management backend built with Express, Prisma, PostgreSQL, and modern tooling.
